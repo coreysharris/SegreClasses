@@ -401,18 +401,9 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 		);
 	    if opts.ProjDegMethod=="Sat" then(
 		--pd = degree saturate(Y+Ls+G,ideal(sum(numgens(W),j->random(kk)*W_j)));
-		pd = degree saturate(Y+Ls+G,ideal(X_0));
-		--pd = degree saturate(Y+Ls+G+LA,X);
+		--pd = degree saturate(Y+Ls+G,ideal(X_0));
+		pd = degree saturate(Y+Ls+G+LA,X);
 		)
-	    --else if(opts.ProjDegMethod=="sub1") then(
-	--	pd=degree(Y+Ls+G+LA)-degree(Y+Ls+G+LA+X);
-	--	)
-	  --  else if(opts.ProjDegMethod=="sub2") then(
-	--	ZeroDimGB=groebnerBasis(Y+Ls+G+LA, Strategy=>"F4");
-	--	<<"dim= "<<dim(ideal(ZeroDimGB))<<endl;
-	--	Zdgb2:=groebnerBasis(ideal(ZeroDimGB)+gbXonly, Strategy=>"F4");
-	--	pd=(numColumns basis(cokernel leadTerm ZeroDimGB))-(numColumns basis(cokernel leadTerm Zdgb2));
-	--	)
 	    else if(opts.ProjDegMethod=="NAG") then(
 		Sys:=flatten entries gens(Y+Ls+G+LA);
 		sols:=solveSystem Sys;
