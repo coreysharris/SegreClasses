@@ -135,13 +135,14 @@ makeMultiHom1 Ideal:=I->(
     return ideal J;
     );
 makeMultiHom2=method(TypicalValue=>Ideal);
-makeMultiHom2 Ideal:=I->(
+makeMultiHom2 (Ideal,Ideal,ZZ):=(K,J,dimY)->(
+    I:=K+J;
     R:=ring I;
     deglenR:=degreeLength R;
     degs:=unique degrees R;
     n:=numgens(R)-length(degs);
     kk:=coefficientRing R;
-    gensI:= delete(0_R,flatten sort entries gens I);
+    gensI:= delete(0_R,flatten sort entries gens K);
     homGens:={};
     exmon:=0;
     degI:= degrees I;
@@ -154,7 +155,7 @@ makeMultiHom2 Ideal:=I->(
     curIrel:=0;
     degDif:=0;
     tempfGens:=0;
-    print "start pdl";
+    --print "start pdl";
     pdlHashList:={};
     for d in degs do(
 	tempId={};
@@ -166,11 +167,11 @@ makeMultiHom2 Ideal:=I->(
 	pdlHashList=append(pdlHashList,{d,tempId});
 	PDl=append(PDl,tempId);
 	);
-    print "done setup";
-    <<{degs,PDl}<<endl;
+    --print "done setup";
+    --<<{degs,PDl}<<endl;
     irelHash:=hashTable(pdlHashList);
-    print "main loop start ";
-    <<peek(irelHash)<<endl;
+    --print "main loop start ";
+    --<<peek(irelHash)<<endl;
     for f in gensI do(
 	if degree(f)==maxDegs then(
 	    homGens=append(homGens,f);
@@ -185,8 +186,8 @@ makeMultiHom2 Ideal:=I->(
 	    homGens=join(homGens,flatten entries gens tempfGens);
 	    );
 	);
-    
-    return ideal homGens;
+    return ideal for j from 0 to dimY list sum(homGens,l->l*random(kk)*random(0,4));
+    --return ideal homGens;
     );
 
 MultiProjCoordRing=method(TypicalValue=>Ring);
@@ -256,7 +257,7 @@ ChowRing (Ring,Symbol):=(R,h)->(
     return A;
 );
 
-Segre=method(TypicalValue => RingElement,Options => {HomMethod=>1,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4}); 
+Segre=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4}); 
 Segre (Ideal,Ideal) :=opts-> (I1,I2) -> ( 
     --print "start segre wrapper";
     A:=ChowRing(ring(I2));
@@ -386,14 +387,14 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 		    );
 	    	);
 	    if opts.HomMethod==1 then (
-		Wg=flatten entries gens makeMultiHom1(W+Ls);
+		Wg=flatten entries gens (makeMultiHom1(W)+Ls);
 		)
 	    else(
-		Wg=flatten entries gens makeMultiHom1(W+Ls);
+		Wg=flatten entries gens (makeMultiHom2(X,Y,dimY)+Ls);
 		);
 	    --Wg=flatten entries gens homogenate(W+Ls);
 	    G=ideal(for j from 1 to dimY-i list sum(Wg,g->random(kk)*g));
-	    <<"G= "<<G<<endl;
+	    --<<"G= "<<G<<endl;
 	    --G=saturate (G,product(PDl));
 	    --<<"G= "<<G<<endl;
 	    for p in PDl do (
@@ -401,9 +402,18 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 		);
 	    if opts.ProjDegMethod=="Sat" then(
 		--pd = degree saturate(Y+Ls+G,ideal(sum(numgens(W),j->random(kk)*W_j)));
-		--pd = degree saturate(Y+Ls+G,ideal(X_0));
-		pd = degree saturate(Y+Ls+G+LA,X);
+		pd = degree saturate(Y+Ls+G,ideal(X_0));
+		--pd = degree saturate(Y+Ls+G+LA,X);
 		)
+	    --else if(opts.ProjDegMethod=="sub1") then(
+	--	pd=degree(Y+Ls+G+LA)-degree(Y+Ls+G+LA+X);
+	--	)
+	  --  else if(opts.ProjDegMethod=="sub2") then(
+	--	ZeroDimGB=groebnerBasis(Y+Ls+G+LA, Strategy=>"F4");
+	--	<<"dim= "<<dim(ideal(ZeroDimGB))<<endl;
+	--	Zdgb2:=groebnerBasis(ideal(ZeroDimGB)+gbXonly, Strategy=>"F4");
+	--	pd=(numColumns basis(cokernel leadTerm ZeroDimGB))-(numColumns basis(cokernel leadTerm Zdgb2));
+	--	)
 	    else if(opts.ProjDegMethod=="NAG") then(
 		Sys:=flatten entries gens(Y+Ls+G+LA);
 		sols:=solveSystem Sys;
@@ -423,14 +433,14 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 	    else(
 	    	--<<"w= "<<w<<",Ls= "<<Ls<<<<",LA= "<<(LA)<<endl;
 		--EqT=ideal( sum((numgens W),j->(1-t*random(kk)*substitute(W_j,R))));
-	    	EqT=ideal( sum((numgens X),j->(1-t*random(kk)*substitute(X_j,R))));
+	    	EqT=ideal( 1-t*sum((numgens X),j->(random(kk)*substitute(X_j,R))));
 		--EqT=ideal(1-t*substitute(X_0,R));
 	    	--print "start gb";
 	    	--print(toString(sub(Y+Ls+G+LA,R)+EqT));
 	    	--saturate(Y+G,W)
 		--<<"deg big = "<<degree(Y+Ls+G+LA)<<", deg little= "<<degree(Y+Ls+G+LA+X)<<endl;
-	    	ZeroDimGB=groebnerBasis(sub(Y+Ls+G+LA,R)+EqT, Strategy=>"F4");
-	    	--<<"dim= "<<dim(ideal(ZeroDimGB))<<", codim G= "<<codim(G)<<<<", codim Ls= "<<codim(Ls)<<endl;
+		ZeroDimGB=groebnerBasis(sub(Y+Ls+G+LA,R)+EqT, Strategy=>"F4");
+	    	--<<"dim= "<<dim(ideal(ZeroDimGB))<<" numgens G "<<numgens(G)<<", codim G= "<<codim(G)<<<<", codim Ls= "<<codim(Ls)<<endl;
             	--<<"G= "<<G<<",Ls= "<<Ls<<<<",LA= "<<(LA)<<endl;
 	    	pd=numColumns basis(cokernel leadTerm ZeroDimGB);
 		);
@@ -544,8 +554,7 @@ x=gens(R)
 degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
-irH=makeMultiHom2(I)
-time Segre(I,J) 
+time Segre(I,J,HomMethod=>2) 
 eXYmult(I,J)
 
 
@@ -597,12 +606,15 @@ Segre(X,Y,ProjDegMethod=>"NAG")
 restart
 -- point on a line
 needsPackage "attempt"
-R = MultiProjCoordRing(QQ,{1,1})
+R = MultiProjCoordRing({1,1})
 x=gens R
-D=ideal(x_0*x_3-x_1*x_2)
-Segre(ideal(x_0-x_1), D,ProjDegMethod=>"Sat")
-time Segre(ideal(x_0-x_1), D)
-time Segre(ideal(x_0-x_1), D,ProjDegMethod=>"NAG")
+Y=ideal(x_0*x_3-x_1*x_2)
+X=ideal(x_0^2*x_3-x_1^2*x_2)
+X1=ideal(X_0*random({1,2},R))
+saturate(5*X+Y,X)
+degree saturate(saturate(X1+Y,X),ideal(x_0,x_1)*ideal(x_2,x_3))
+time Segre(X, Y)
+time Segre(ideal(x_0-x_1)+, D,ProjDegMethod=>"NAG")
 -- s(PP0,PP1) = [PP0]
 
 -- union of coordinate axes in PP3 (diagonal)
@@ -611,8 +623,19 @@ R = MultiProjCoordRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
 X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
-time Segre(X,D,ProjDegMethod=>"sub1")
+time Segre(X,D,HomMethod=>1)
 -- s(axes,PP3) = 3[PP1] - 10[PP0] ... I think this means 3 *("both" PP1's)
+
+Z=D
+kk=coefficientRing R
+S=R/Z
+I1=sub(ideal for j from 1 to 3 list sum(flatten entries gens X, l->random(kk)*l),S)
+K1=saturate(I1,sub(X,S))
+J1=saturate (K1,ideal(S_0,S_1,S_2,S_3)*ideal(S_4..S_7))
+degree J1
+
+
+
 multidegree (X+D)
 degrees X
 -- i.e. h^3h_2^2 and h^2h_2^3
@@ -625,7 +648,7 @@ degrees R
 I=ideal(x_0*x_6^2-x_1*x_5*x_7,x_0*x_5-8*x_1*x_6+3*x_2*x_4)
 J=ideal random({1,1},R)
 time Segre(I,J,ProjDegMethod=>"Sat")
-seg=time Segre(I,J,HomMethod=>2)
+seg=time Segre(I,J)
 
 eXYmult(I,J)
 md=multidegree(I+J)
@@ -651,14 +674,98 @@ D = minors(2,matrix{take(gens PP3xPP3,4),drop(gens PP3xPP3,4)})
 X+Y
 time Segre(D, X+Y,HomMethod=>2)
 time Segre(D, X+Y,ProjDegMethod=>"Sat")
+R = ZZ/32003[x,y,z,w];
+P = ideal "  yw-z2,   xw-yz"
+I = ideal "z(yw-z2)-w(xw-yz), xz-y2"
+Segre(P,I)
+time eXYmult(P,I)
+P=ideal (x,y)
+I
+restart
+needsPackage "attempt"
+R = QQ[x,y,z];
+I=ideal(x^5+y^5+z^5)
+P=ideal(z)
+Segre(P,I)
+
+
+restart
+needsPackage "LocalRings"
+R = QQ[x,y,z];
+I=ideal(x^5+y^5+z^5)
+P=ideal(z,y)
+RP = localRing(R, P);
+M = RP^1/promote(I, RP)
+elapsedTime length(RP^1/promote(I, RP))
+
+restart
+needsPackage "LocalRings"
+R = QQ[x,y,z,w];
+I = ideal (y*w-z^2,x*w-y*z,  x*z-y^2)
+J = ideal (z*(y*w-z^2)-w*(x*w-y*z), x*z-y^2)
+isSubset(J,I)
+
+P=ideal(random(3,R),random(3,R))
+I=ideal(z*P_0+w*P_1)+P
+codim I == codim P --Hence this is finite, thus I is artinian in R_P, i.e. RP/IP is an artinian ring.
+isPrime P
+RP = localRing(R, P)
+N = RP^1/promote(I, RP)
+time length(N)
+isSubset(I,P)
+I==P
+time for i from 0 to 3 list hilbertSamuelFunction(N, i)
+isPrimary I
+restart
+needsPackage "LocalRings"
+R = QQ[x,y,z];
+RP = localRing(R, ideal(x));
+I=ideal(x^5+y^5+z^5,z^5+y^5)
+M = RP^1/I
+elapsedTime length(RP^1/I) -- 0.5 seconds
+elapsedTime (for i from 0 to 6 list hilbertSamuelFunction(M, i)) -- 5.5 seconds
+
+elapsedTime assert((for i from 0 to 6 list hilbertSamuelFunction(promote(max ring M, ring M),M, i))//sum == 27)
+
 
 x=gens R
 J
-///
+{*  
+    restart
+    needsPackage "attempt"
+*} 
+kk=ZZ/32749
+R = MultiProjCoordRing(kk,{2,3})
+x=(gens R)_{0..2}
+y=(gens R)_{3..6}
+I=ideal(x_0^2*x_1*y_1^2-x_0^3*y_0*y_3)
+J=ideal(x_1^2*x_0*y_3^2-x_0^3*y_2*y_0-x_0^3*y_0^2)    
+time seg=Segre(I,J,HomMethod=>2)
+decompose (I+J)
+multidegree(I+J)
+
+R=MultiProjCoordRing({2,1})
+x=(gens R)_{0..2}
+y=(gens R)_{3..4}
+I=ideal(random({1,0},R),random({1,0},R))
+B=ideal(y_0*I_1-y_1*I_0)
+E=?
+
+R=MultiProjCoordRing({3,3})
+x=(gens(R))_{0..3}
+y=(gens(R))_{4..7}
+Qx=random({2,0},R)
+Qy=sub(Qx,matrix{join(y,for i from 4 to 7 list 0)})
+D = minors(2,matrix{x,y})
+I=ideal(Qx,Qy,D)
+Cx=random({1,0},R)
+Cy=sub(Cx,matrix{join(y,for i from 4 to 7 list 0)})
+C=ideal(Cx,Cy)
+Segre(C,I)
 
 
 TEST ///
-{*  
+{*  INT PRODUCT OF CUBIC SURFACES
     restart
     needsPackage "attempt"
 *} 
@@ -669,9 +776,19 @@ m1 = map(PP3xPP3,R,take(gens PP3xPP3,4))
 m2 = map(PP3xPP3,R,drop(gens PP3xPP3,4))
 f = ideal "x(x2-2xy+zt) + y(x2-3yt+z2+3t2-3tz+xy)"
 h = ideal "x(x2-7y2-zt) + y(3x2-5yt)"
-X = m1(f)
-Y = m2(h)
+g = ideal "x(23xy-34z2-17yt+t2) + y(x2+y2+z2+xy+zt)"
+X = m1(f+g)
+Y = m2(h+g)
 D = minors(2,matrix{take(gens PP3xPP3,4),drop(gens PP3xPP3,4)})
+time Segre(D,X+Y,HomMethod=>2)
+
+Z=X+Y
+S=PP3xPP3/Z
+I1=sub(ideal for j from 1 to 4 list sum(flatten entries gens D, l->random(kk)*l),S)
+K1=saturate(I1,sub(D,S))
+J1=saturate (K1,ideal(S_0,S_1,S_2,S_3)*ideal(S_4..S_7))
+degree J1
+
 X+Y
 Y=X+Y
 X=D
