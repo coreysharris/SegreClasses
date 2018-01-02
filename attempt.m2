@@ -354,7 +354,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 	    
 	);
     --<<"codim LA= "<<codim(LA)<<", LA= "<<LA<<endl;
-    <<"[Y]= "<<clY<<<<", alpha= "<<alpha<<endl;
+    <<"[Y]= "<<clY<<endl<<", alpha= "<<alpha<<endl;
     --print "end compute class Y";
     --degY*h^(n-dimY);
     -- V \subset |O(d)| is the linear system on Y for which X is the base scheme
