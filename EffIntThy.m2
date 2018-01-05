@@ -28,13 +28,50 @@ export {
    "Sparsity",
    "CompMethod",
    "eXYmult",
-   "ChowClass"
-
+   "chowClass"
 }
 
 hasAttribute = value Core#"private dictionary"#"hasAttribute"
 getAttribute = value Core#"private dictionary"#"getAttribute"
 ReverseDictionary = value Core#"private dictionary"#"ReverseDictionary"
+
+Scheme = new Type of MutableHashTable
+globalAssignment Scheme
+
+toString Scheme := net Scheme := X -> (
+    if hasAttribute(X,ReverseDictionary) then toString getAttribute(X,ReverseDictionary)
+    else "a scheme")
+Scheme#{Standard,AfterPrint} = X -> (
+    << concatenate(interpreterDepth:"o") << lineNumber << " : "
+    -- << "a projective scheme in PP^" << dim(X.AmbientSpace) << " defined by " << X.Ideal << endl;
+)
+
+scheme = method(TypicalValue => Scheme, Options => {
+    -- SuperScheme => null,  -- a Scheme containing the one we are defining
+    --                                           -- If I is the ideal of SuperScheme in R, and we define our
+    --                                           -- new scheme with J in R, we instead will use I+J
+    -- AmbientSpace => null, -- the projective space where we will be computing
+    -- MakeBaseOfLinearSystem => false   -- if true, the ideal used to define the projective scheme should be made to have all terms of same degree
+})
+scheme Ideal :=  opts -> I -> (
+    return new Scheme from {
+        global ideal => I,
+        global gb => null,
+        -- global baseField => coefficientRing ring I,
+        -- global coordinateRing => quotient I,
+        -- global equations => eqs,
+        -- global ambientSpace => P,
+        -- global hyperplane => ( chern_1 (OO_P(1)) ), -- the class of a hyperplane in ambientSpace
+        global dim => null,
+        global degree => null,
+        global codim => null,
+        global chowClass => null
+    }
+)
+
+dim Scheme := X -> (
+    if X.dim==null then return 1 else return 0
+)
 
 projectiveDegree = method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
 projectiveDegree (Ideal,Ideal,List) :=opts-> (I1,I2,ChowElandDim) -> (
@@ -100,7 +137,7 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
     Iinfo:=new MutableHashTable;
     A:=ChowRing(ring(I2));
     Iinfo#"A"=A;
-    clX:=ChowClass(I1+I2,Iinfo,CompMethod=>"md");
+    clX:=chowClass(I1+I2,Iinfo,CompMethod=>"multidegree");
     seg:= Segre(I1,I2,A,HomMethod=>opts.HomMethod,ProjDegMethod=>opts.ProjDegMethod,SloppinessLevel=>opts.SloppinessLevel,Sparsity=>opts.Sparsity);
     mons:=flatten entries monomials clX;
     segMons:=sum(for m in mons list m*seg_(m));
@@ -109,6 +146,10 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
 );
 
 chowClass=method(TypicalValue=>ZZ,Options => {CompMethod=>"multidegree"});
+chowClass Scheme := X -> (
+    if X.chowClass==null then X.chowClass == chowClass(X.ideal);
+    return (X.chowClass)
+)
 chowClass (Ideal) := opts -> (I) -> (
     R:=ring(I);
     A:=ChowRing(R);
