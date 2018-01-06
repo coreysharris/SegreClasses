@@ -17,6 +17,7 @@ newPackage( "EffIntThy",
 
 export {
    "ChowRing",
+   "chowRing",
    "MultiProjCoordRing",
    "isMultiHomogeneous",
    "Segre",
@@ -46,41 +47,36 @@ Scheme#{Standard,AfterPrint} = X -> (
     -- << "a projective scheme in PP^" << dim(X.AmbientSpace) << " defined by " << X.Ideal << endl;
 )
 
-scheme = method(TypicalValue => Scheme, Options => {
-    -- SuperScheme => null,  -- a Scheme containing the one we are defining
-    --                                           -- If I is the ideal of SuperScheme in R, and we define our
-    --                                           -- new scheme with J in R, we instead will use I+J
-    -- AmbientSpace => null, -- the projective space where we will be computing
-    -- MakeBaseOfLinearSystem => false   -- if true, the ideal used to define the projective scheme should be made to have all terms of same degree
-})
+scheme = method(TypicalValue => Scheme, Options => {chowRing => null})
 scheme Ideal :=  opts -> I -> (
     return new Scheme from {
         global ideal => I,
         global ring => ring I,
-        -- global equations => eqs,
-        global gb => null,
-        global dim => null,
-        global codim => null,
-        global chowClass => null
+        global coefficientRing => coefficientRing ring I,
+        chowRing => opts.chowRing,
+        -- global gb => null,
+        -- global dim => null,
+        -- global codim => null,
+        -- global chowClass => null
     }
 )
 
 ideal Scheme := X -> ( X.ideal )
 
 codim Scheme := X -> (
-    if X.codim==null then ( X.codim = codim ideal leadTerm gb(X) );
+    if not X.?codim then ( X.codim = codim ideal leadTerm gb(X) );
     return X.codim
 )
 
 gb Scheme := opts -> X -> (
-    if X.gb==null then ( X.gb = groebnerBasis(X,opts) );
+    if not X.?gb then ( X.gb = groebnerBasis(X,opts) );
     return X.gb
 )
 
 ring Scheme := X -> ( X.ring )
 
 dim Scheme := X -> (
-    if X.dim==null then (
+    if not X.?dim then (
         ambientDim := numgens(ring X) - #(unique degrees ring X);
         X.dim = ambientDim - codim X
     );
@@ -161,16 +157,20 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
 );
 
 chowClass=method(TypicalValue=>ZZ,Options => {CompMethod=>"multidegree"});
-chowClass Scheme := X -> (
-    if X.chowClass==null then X.chowClass == chowClass(ideal X);
-    return (X.chowClass)
+chowClass Scheme := opts -> X -> (
+    if not X.?chowClass then X.chowClass = chowClass(ideal X, X.chowRing);
+    return X.chowClass
+)
+chowClass (Ideal,Ring) := opts -> (I,A) -> (
+    R:=ring(I);
+    return sub(multidegree I, matrix{ gens A })
 )
 chowClass (Ideal) := opts -> (I) -> (
     R:=ring(I);
     A:=ChowRing(R);
-    if opts.CompMethod=="multidegree" then (
+    -- if opts.CompMethod=="multidegree" then (
         return sub(multidegree I, matrix{ gens A });
-    );
+    -- );
     -- Iinfo:=new MutableHashTable;
     -- Iinfo#"A"=A;
     -- degs:=unique degrees R;
@@ -408,6 +408,10 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     -------Initilization Begins-----------------------------------
     if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
+    -- sX := scheme(X, ChowRing => A);
+    sY := scheme(Y,chowRing=>A);
+    sX := scheme(X);
+    -- sY := scheme(Y);
     R :=ring Y;
     kk:=coefficientRing R;
     if opts.ProjDegMethod=="NAG" and char(kk)!=0 then (print "Use QQ for NAG"; return 0;);
@@ -436,8 +440,10 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     gbY := groebnerBasis(Y, Strategy=>"MGB");
     codimX := codim ideal leadTerm gbX;
     codimY:= codim ideal leadTerm gbY;
-    dimX := n-codimX;
-    dimY:= n-codimY;
+    dimX := dim sX;
+    dimY := dim sY;
+    -- dimX := n-codimX;
+    -- dimY := n-codimY;
     c:={};
     v:=0;
     Ls:=0;
@@ -462,8 +468,9 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     ShareInfo#"maxDegs"=maxDegs;
     ShareInfo#"pointClass"=pointClass;
     -------------------------------
-    clY:=chowClass(Y,ShareInfo,CompMethod=>"prob");
-    if opts.Verbose then <<"[Y]= "<<clY<<", alpha= "<<alpha<<endl;
+    -- clY:=chowClass(sY);
+    -- clY:=chowClass(Y,ShareInfo,CompMethod=>"prob");
+    if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
     W:=X+Y;
     Wg:=0;
     G:=0;
@@ -489,7 +496,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     SegClass:=0_A;
     temp7:=0;
     temp9:=0;
-    RHS:=sum(0..dimX,i->alpha^(dimY-i)*clY)-Gam;
+    RHS:=sum(0..dimX,i->alpha^(dimY-i)*chowClass(sY))-Gam;
     for i from 0 to dimX do (
         for w in basisA do (
             if sum(flatten exponents(w))==n-(dimX-i) then (
@@ -549,7 +556,7 @@ x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
 X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
 A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^4,b^4)
-s = Segre(X,D,A)
+s = Segre(X,D,A,Verbose=>true)
 assert(s == 3*(a^3*b^2+a^2*b^3)-10*(a^3*b^3))
 ///
 
