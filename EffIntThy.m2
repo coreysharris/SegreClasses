@@ -161,15 +161,14 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
 
 chowClass=method(TypicalValue=>ZZ,Options => {CompMethod=>"multidegree"});
 chowClass Scheme := X -> (
-    if X.chowClass==null then X.chowClass == chowClass(X.ideal);
+    if X.chowClass==null then X.chowClass == chowClass(ideal X);
     return (X.chowClass)
 )
 chowClass (Ideal) := opts -> (I) -> (
     R:=ring(I);
     A:=ChowRing(R);
     if opts.CompMethod=="multidegree" then (
-        md:=multidegree (I);
-        return sub(md,matrix{gens(A)});
+        return sub(multidegree I, matrix{ gens A });
     );
     -- Iinfo:=new MutableHashTable;
     -- Iinfo#"A"=A;
