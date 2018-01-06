@@ -56,21 +56,38 @@ scheme = method(TypicalValue => Scheme, Options => {
 scheme Ideal :=  opts -> I -> (
     return new Scheme from {
         global ideal => I,
-        global gb => null,
-        -- global baseField => coefficientRing ring I,
-        -- global coordinateRing => quotient I,
+        global ring => ring I,
         -- global equations => eqs,
-        -- global ambientSpace => P,
-        -- global hyperplane => ( chern_1 (OO_P(1)) ), -- the class of a hyperplane in ambientSpace
+        global gb => null,
         global dim => null,
-        global degree => null,
         global codim => null,
         global chowClass => null
     }
 )
 
+codim Scheme := X -> (
+    if X.codim==null then (
+        X.codim = codim ideal leadTerm gb(X)
+    );
+    return X.codim
+)
+
+gb Scheme := opts -> X -> (
+    if X.gb==null then (
+        X.gb = groebnerBasis(X,opts)
+    );
+    return X.gb
+)
+
+ring Scheme := X -> (
+    return X.ring
+)
+
 dim Scheme := X -> (
-    if X.dim==null then return 1 else return 0
+    if X.dim==null then (
+        X.dim = #(unique degrees ring X)
+    );
+    return X.dim
 )
 
 projectiveDegree = method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
@@ -571,10 +588,11 @@ s = Segre(X,D,A)
 assert(s == 3*(a^3*b^2+a^2*b^3)-10*(a^3*b^3))
 ///
 
-end
-
+TEST ///
+{*
 restart
 needsPackage "EffIntThy"
+*}
 R=MultiProjCoordRing({6})
 x=gens(R)
 degrees R
@@ -584,6 +602,9 @@ chowClass(J,CompMethod=>"prob")
 A = ZZ[h]/(h^7)
 assert(Segre(I,J,A)==16*h^3-96*h^4+448*h^5-1920*h^6)
 assert(eXYmult(I,J)==1)
+///
+
+end
 
 restart
 needsPackage "EffIntThy"
