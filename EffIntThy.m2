@@ -63,13 +63,13 @@ scheme Ideal :=  opts -> I -> (
 
 ideal Scheme := X -> ( X.ideal )
 
-codim Scheme := X -> (
+codim Scheme := {} >> opts -> X -> (
     if not X.?codim then ( X.codim = codim ideal leadTerm gb(X) );
     return X.codim
 )
 
 gb Scheme := opts -> X -> (
-    if not X.?gb then ( X.gb = groebnerBasis(X,opts) );
+    if not X.?gb then ( X.gb = groebnerBasis(ideal X) );
     return X.gb
 )
 
@@ -410,7 +410,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
     -- sX := scheme(X, ChowRing => A);
     sY := scheme(Y,chowRing=>A);
-    sX := scheme(X);
+    sX := scheme(X+Y,chowRing=>A);
     -- sY := scheme(Y);
     R :=ring Y;
     kk:=coefficientRing R;
