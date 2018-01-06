@@ -65,27 +65,24 @@ scheme Ideal :=  opts -> I -> (
     }
 )
 
+ideal Scheme := X -> ( X.ideal )
+
 codim Scheme := X -> (
-    if X.codim==null then (
-        X.codim = codim ideal leadTerm gb(X)
-    );
+    if X.codim==null then ( X.codim = codim ideal leadTerm gb(X) );
     return X.codim
 )
 
 gb Scheme := opts -> X -> (
-    if X.gb==null then (
-        X.gb = groebnerBasis(X,opts)
-    );
+    if X.gb==null then ( X.gb = groebnerBasis(X,opts) );
     return X.gb
 )
 
-ring Scheme := X -> (
-    return X.ring
-)
+ring Scheme := X -> ( X.ring )
 
 dim Scheme := X -> (
     if X.dim==null then (
-        X.dim = #(unique degrees ring X)
+        ambientDim := numgens(ring X) - #(unique degrees ring X);
+        X.dim = ambientDim - codim X
     );
     return X.dim
 )
