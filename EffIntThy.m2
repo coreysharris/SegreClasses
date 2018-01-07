@@ -566,20 +566,80 @@ degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
 chowClass(J,CompMethod=>"prob")
+-- having this here breaks the test (!?).  Separating for now...
+-- A = ZZ[h]/(h^7)
+-- assert(Segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
+assert(eXYmult(I,J,Verbose=>true)==1)
+///
+
+TEST ///
+{*
+restart
+needsPackage "EffIntThy"
+*}
+R=MultiProjCoordRing({6})
+x=gens(R)
+degrees R
+I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
+J=ideal(x_0*x_2-x_4*x_5)
+chowClass(J,CompMethod=>"prob")
 A = ZZ[h]/(h^7)
-assert(Segre(I,J,A)==16*h^3-96*h^4+448*h^5-1920*h^6)
-assert(eXYmult(I,J)==1)
+assert(Segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
+///
+
+TEST ///
+{*
+restart
+needsPackage "EffIntThy"
+*}
+R = ZZ/32003[x,y,z,w];
+I = ideal(-z^2+y*w,-y*z+x*w)
+J = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
+assert(eXYmult(I,J)==2)
+///
+
+TEST ///
+{*
+restart
+needsPackage "EffIntThy"
+*}
+-- Cx is a hyperplane section on a smooth quadric surface
+-- embedded in the diagonal of P3xP3
+R=MultiProjCoordRing({3,3})
+x=(gens(R))_{0..3}
+y=(gens(R))_{4..7}
+Qx = ideal (x#0*x#1 - x#2*x#3)
+Qy=sub(Qx,matrix{join(y,for i from 4 to 7 list 0)})
+D = minors(2,matrix{x,y})
+I=ideal(Qx,Qy,D) --Q in the diagional
+Cx=ideal random({1,0},R)
+A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^4,b^4)
+s=Segre(Cx,I,A,Verbose=>true)
+assert(s == 2*(a^3*b^2+a^2*b^3-a^3*b^3))
+///
+
+TEST ///
+{*
+restart
+needsPackage "EffIntThy"
+*}
+restart
+needsPackage "EffIntThy"
+R=MultiProjCoordRing({2,1});
+x=(gens R)_{0..2};
+y=(gens R)_{3..4};
+I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
+B=ideal(y_0*I_1-y_1*I_0); ---blow up of this point...
+E=B+ideal (x_0,x_1);
+A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^3,b^2)
+s=Segre(E,B,A)
+assert(s == a^2 + a^2*b)
 ///
 
 end
 
 restart
-needsPackage "EffIntThy"
-R = ZZ/32003[x,y,z,w];
-I = ideal(-z^2+y*w,-y*z+x*w)
-J = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
-time mult=eXYmult(I,J)
-mult==2
+check "EffIntThy"
 
 restart
 needsPackage "EffIntThy"
@@ -590,30 +650,6 @@ y=(gens R)_{3..6}
 I=ideal(x_0^2*x_1*y_1^2-x_0^3*y_0*y_3)
 J=ideal(x_1^2*x_0*y_3^2-x_0^3*y_2*y_0-x_0^3*y_0^2)
 time seg=Segre(I,J)
-
-restart
-needsPackage "EffIntThy"
-R=MultiProjCoordRing({3,3})
-x=(gens(R))_{0..3}
-y=(gens(R))_{4..7}
---Qx=random({2,0},R)
-Qx = ideal (x#0*x#1 - x#2*x#3)
-Qy=sub(Qx,matrix{join(y,for i from 4 to 7 list 0)})
-D = minors(2,matrix{x,y})
-I=ideal(Qx,Qy,D) --QxQ in the diagional
-Cx=ideal random({1,0},R)
-s=Segre(Cx,I)
-
-restart
-needsPackage "EffIntThy"
-R=MultiProjCoordRing({2,1});
-x=(gens R)_{0..2};
-y=(gens R)_{3..4};
--- I=ideal(random({1,0},R),random({1,0},R)) --a point in P^2
-I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
-B=ideal(y_0*I_1-y_1*I_0); ---blow up of this point...
-E=B+ideal (x_0,x_1);
-s=Segre(E,B)
 
 restart
 needsPackage "EffIntThy"
@@ -628,4 +664,5 @@ g = ideal "x(23xy-34z2-17yt+t2) + y(x2+y2+z2+xy+zt)"
 X = m1(f+g)
 Y = m2(h+g)
 D = minors(2,matrix{take(gens PP3xPP3,4),drop(gens PP3xPP3,4)})
+-- this example takes 30secs or so... (07.01.18)
 time Segre(D,X+Y,HomMethod=>2)
