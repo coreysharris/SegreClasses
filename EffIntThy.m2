@@ -93,8 +93,10 @@ projectiveDegree(Ideal, Ideal,List,MutableHashTable) := opts-> (X,Y,ChowElandDim
     w:=first ChowElandDim;
     i:=last ChowElandDim;
     kk:=coefficientRing(R);
-    t:=symbol t;
-    S:=kk[gens R,t];
+    -- t:=symbol t;
+    -- S:=kk[gens R,t];
+    S:=kk(monoid[gens R,getSymbol "t"]);
+    t := last gens S;
     Ls:=0;
     LA:=0;
     pointClass:=Info#"pointClass";
@@ -148,7 +150,7 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
     A:=ChowRing(ring(I2));
     Iinfo#"A"=A;
     clX:=chowClass(I1+I2,Iinfo,CompMethod=>"multidegree");
-    seg:= Segre(I1,I2,A,HomMethod=>opts.HomMethod,ProjDegMethod=>opts.ProjDegMethod,SloppinessLevel=>opts.SloppinessLevel,Sparsity=>opts.Sparsity);
+    seg:= Segre(I1,I2,A,opts);
     mons:=flatten entries monomials clX;
     segMons:=sum(for m in mons list m*seg_(m));
     if opts.Verbose then <<"[X]= "<<clX<<" these monomials in Segre class= "<<segMons<<endl;
@@ -161,12 +163,12 @@ chowClass Scheme := opts -> X -> (
     return X.chowClass
 )
 chowClass (Ideal,Ring) := opts -> (I,A) -> (
-    R:=ring(I);
+    -- R:=ring(I);
     return sub(multidegree I, matrix{ gens A })
 )
 chowClass (Ideal) := opts -> (I) -> (
-    R:=ring(I);
-    A:=ChowRing(R);
+    -- R:=ring(I);
+    A:=ChowRing(ring I);
     -- if opts.CompMethod=="multidegree" then (
         return sub(multidegree I, matrix{ gens A });
     -- );
@@ -359,7 +361,8 @@ MultiProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
         );
         ind=ind+1;
     );
-    return kk[x_0..x_(numVars-1),Degrees=>degs];
+    -- return kk[x_0..x_(numVars-1),Degrees=>degs];
+    return kk(monoid[vars(0..numVars-1),Degrees=>degs]);
 );
 
 ChowRing=method(TypicalValue=>QuotientRing);
@@ -374,7 +377,8 @@ ChowRing (Ring,Symbol):=(R,h)->(
     -- eqs:=0;
     ChDegs:=unique Rdegs;
     m:=length ChDegs;
-    C:=ZZ[h_1..h_m,Degrees=>ChDegs];
+    -- C:=ZZ[h_1..h_m,Degrees=>ChDegs];
+    C:= ZZ(monoid[(1..m) / (i -> (getSymbol "h")_i), Degrees=>ChDegs]);
     K:={};
     -- inds:={};
     -- rg:=0;
