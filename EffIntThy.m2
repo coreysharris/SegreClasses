@@ -360,7 +360,9 @@ makeMultiHom (Ideal,Ideal,MutableHashTable):=(K,J,InfoHash)->(
     kk:=coefficientRing R;
     gensI:= delete(0_R,flatten sort entries gens K);
     homGens:={};
-    maxDegs:=InfoHash#"maxDegs";
+    -- maxDegs:=InfoHash#"maxDegs";
+    transDegX:= transpose degrees (I);
+    maxDegs:= for i from 0 to length(transDegX)-1 list max transDegX_i;
     curIrel:=0;
     degDif:=0;
     tempfGens:=0;
@@ -518,7 +520,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     "dimY"=>dimY,
     "codimY"=>codimY,
     "gbY"=>gbY,
-    "maxDegs"=>maxDegs,
+    -- "maxDegs"=>maxDegs,
     "pointClass"=>pointClass
     };
     -------------------------------
