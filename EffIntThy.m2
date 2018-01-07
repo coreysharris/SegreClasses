@@ -476,8 +476,6 @@ Segre (Ideal,Ideal) :=opts-> (I1,I2) -> (
     return Segre(I1,I2,A,opts);
 );
 Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
-    --------------------------------------------------------
-    -------Initilization Begins-----------------------------------
     if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
     R :=ring Y;
@@ -487,68 +485,26 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     sX := scheme(X+Y,chowRing=>IA);
     kk:=coefficientRing R;
     if opts.ProjDegMethod=="NAG" and char(kk)!=0 then (print "Use QQ for NAG"; return 0;);
-    -- basisA := flatten entries sort basis A;
     basisA := IA.basis;
-
     irelHash := partition(degree, gens R);
     PDl := values irelHash / ideal;
-
     --this saturation might or might not be a good idea
     X=saturate(X,product(PDl));
     Y=saturate(Y,product(PDl));
     --find the max multidegree, write it as a class alpha
     transDegX:= transpose degrees (X+Y);
     maxDegs:= for i from 0 to length(transDegX)-1 list max transDegX_i;
-
-    -- deg1basisA := select(basisA, w -> sum(degree(w))==1);
     deg1basisA := IA.codim1Basis;
-    -- m:=length unique degrees R;
     alpha:=sum(length deg1basisA,i->(basis(OneAti(degreeLength R,i),A))_0_0*maxDegs_i);
 
-    -- pointClass:=0;
-    -- for b in basisA do (
-    --     if sum(flatten(exponents(b)))==n then pointClass=b;
-    -- );
     pointClass := IA.pointClass;
-
-    --find gb's
-    -- gbX := groebnerBasis(X+Y, Strategy=>"MGB");
-    -- gbY := groebnerBasis(Y, Strategy=>"MGB");
-    -- codimX := codim ideal leadTerm gbX;
-    -- codimY:= codim ideal leadTerm gbY;
     codimX := codim sX;
     codimY := codim sY;
     dimX := dim sX;
     dimY := dim sY;
-    -- dimX := n-codimX;
-    -- dimY := n-codimY;
-    c:={};
-    v:=0;
-    Ls:=0;
-    ve:=0;
-    ZeroDimGB:=0;
-    LA:=0;
-    --clY:=0;
-    -------------------------------
-    --common info that will be needed by functions (both existing funcs and TODO funcs)
-    --could be switched to an object
-    ShareInfo:=new MutableHashTable from {
-    "R"=>R,
-    "A"=>A,
-    "basisA"=>basisA,
-    "n"=>IA.ambientDim,
-    "dimY"=>dimY,
-    "codimY"=>codim sY,
-    "gbY"=>gb sY,
-    -- "maxDegs"=>maxDegs,
-    "pointClass"=>pointClass
-    };
     -------------------------------
     if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
-    -- W:=X+Y;
     projectiveDegreesList := {};
-    --------------------------------------------------------
-    -------Initilization Ends-----------------------------------
     -----Begin Main Process------------------------------
     for i from 0 to dimX do (
         for w in basisA do (
