@@ -36,6 +36,30 @@ hasAttribute = value Core#"private dictionary"#"hasAttribute"
 getAttribute = value Core#"private dictionary"#"getAttribute"
 ReverseDictionary = value Core#"private dictionary"#"ReverseDictionary"
 
+IntersectionRing = new Type of MutableHashTable
+globalAssignment IntersectionRing
+
+intersectionRing = method(TypicalValue => IntersectionRing)
+intersectionRing(Ring,ZZ) := (R,ambientdim) -> (
+    basisR := flatten entries sort basis R;
+    pointClassIndex := position(basisR, w -> sum(flatten exponents(w))==ambientdim);
+    codim1basis := select(basisR, w -> sum(degree w)==1 );
+    return new IntersectionRing from {
+        global ring => R,
+        global pointClass => basisR#pointClassIndex,
+        global codim1Basis => codim1basis,
+        global basis => basisR,
+        global ambientDim => ambientdim
+    }
+)
+
+ring IntersectionRing := R -> ( R.ring )
+pointClass = R -> ( R.pointClass )
+codim1Basis = R -> ( R.codim1Basis )
+ambientDim = R -> ( R.ambientDim )
+basis IntersectionRing := R -> ( print("basis"); R.basis )
+
+
 Scheme = new Type of MutableHashTable
 globalAssignment Scheme
 
@@ -142,6 +166,34 @@ projectiveDegree(Ideal, Ideal,List,MutableHashTable) := opts-> (X,Y,ChowElandDim
     );
     return pd;
 );
+
+
+projectiveDegrees = method(TypicalValue => List,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
+    R := ring(X);
+    -- A := chowRing(X);
+    A := X.chowRing;
+    ShareInfo:=new MutableHashTable from {
+        "R"=>R,
+        "A"=>A,
+        "basisA"=>A.basis,
+        "n"=>A.ambientDim,
+        "dimY"=>dim Y,
+        "codimY"=>codim Y,
+        "gbY"=>gb Y,
+        "pointClass"=>A.pointClass
+    };
+    projectiveDegreesList := {};
+    for i from 0 to dim(X) do (
+        for w in A.basis do (
+            if sum(flatten exponents(w))==A.ambientDim-i then (
+                pd:=projectiveDegree(ideal X, ideal Y, {w,i}, ShareInfo,opts);
+                projectiveDegreesList = append(projectiveDegreesList,pd*w);
+            );
+        );
+    );
+    return projectiveDegreesList
+)
 
 eXYmult=method(TypicalValue=>ZZ,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
 eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
@@ -412,10 +464,10 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
     -- sX := scheme(X, ChowRing => A);
-    sY := scheme(Y,chowRing=>A);
-    sX := scheme(X+Y,chowRing=>A);
-    -- sY := scheme(Y);
     R :=ring Y;
+    sY := scheme(Y,chowRing=>IA);
+    sX := scheme(X+Y,chowRing=>IA);
+    -- sY := scheme(Y);
     kk:=coefficientRing R;
     if opts.ProjDegMethod=="NAG" and char(kk)!=0 then (print "Use QQ for NAG"; return 0;);
     basisA := flatten entries sort basis A;
@@ -457,26 +509,23 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     -------------------------------
     --common info that will be needed by functions (both existing funcs and TODO funcs)
     --could be switched to an object
-    ShareInfo:=new MutableHashTable;
-    ShareInfo#"R"=R;
-    ShareInfo#"A"=A;
-    ShareInfo#"basisA"=basisA;
-    ShareInfo#"n"=n;
-    ShareInfo#"dimY"=dimY;
-    ShareInfo#"codimY"=codimY;
-    ShareInfo#"gbY"=gbY;
-    --the computation of these (above) could be moved to a function
-    -- ShareInfo#"irelHash"=irelHash;
-    -- ShareInfo#"PDl"=PDl;
-    ShareInfo#"maxDegs"=maxDegs;
-    ShareInfo#"pointClass"=pointClass;
+    ShareInfo:=new MutableHashTable from {
+    "R"=>R,
+    "A"=>A,
+    "basisA"=>basisA,
+    "n"=>n,
+    "dimY"=>dimY,
+    "codimY"=>codimY,
+    "gbY"=>gbY,
+    -- "maxDegs"=>maxDegs,
+    "pointClass"=>pointClass
+    };
     -------------------------------
     -- clY:=chowClass(sY);
     -- clY:=chowClass(Y,ShareInfo,CompMethod=>"prob");
     if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
     -- W:=X+Y;
     projectiveDegreesList := {};
-    deltaDegreesList := {};
     --------------------------------------------------------
     -------Initilization Ends-----------------------------------
     -----Begin Main Process------------------------------
@@ -488,6 +537,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
             );
         );
     );
+    -- projectiveDegreesList := projectiveDegrees(sX,sY);
     if opts.Verbose then <<"Projective degrees= "<<projectiveDegreesList<<endl;
     --build Segre class recursivly from Proj Degs
     Gam:=sum(projectiveDegreesList);
