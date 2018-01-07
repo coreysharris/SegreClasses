@@ -111,6 +111,21 @@ projectiveDegree (Ideal,Ideal,List) :=opts-> (I1,I2,ChowElandDim) -> (
     if opts.Verbose then print "TODO Write Wrapper, not done";
     return 0;
 );
+projectiveDegree(Scheme,Scheme,List) := opts -> (sX,sY,c) -> (
+    A := sX.chowRing;
+    Info := new MutableHashTable from {
+        "R"=> ring sX,
+        "A"=> ring A,
+        "basisA"=> A.basis,
+        "n"=> A.ambientDim,
+        "dimY"=> dim sY,
+        "codimY"=> codim sY,
+        "gbY"=> gb sY,
+        "pointClass"=> A.pointClass
+    };
+        
+    projectiveDegree(ideal sX, ideal sY, c, Info, opts)
+);
 projectiveDegree(Ideal, Ideal,List,MutableHashTable) := opts-> (X,Y,ChowElandDim,Info) -> (
     --<<"ProjDegMethod= "<<opts.ProjDegMethod<<endl;
     R:=ring X;
@@ -465,16 +480,15 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     -------Initilization Begins-----------------------------------
     if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
-    -- sX := scheme(X, ChowRing => A);
     R :=ring Y;
     n:=numgens(R)-length unique degrees R;
     IA := intersectionRing(A,n);
     sY := scheme(Y,chowRing=>IA);
     sX := scheme(X+Y,chowRing=>IA);
-    -- sY := scheme(Y);
     kk:=coefficientRing R;
     if opts.ProjDegMethod=="NAG" and char(kk)!=0 then (print "Use QQ for NAG"; return 0;);
-    basisA := flatten entries sort basis A;
+    -- basisA := flatten entries sort basis A;
+    basisA := IA.basis;
 
     irelHash := partition(degree, gens R);
     PDl := values irelHash / ideal;
@@ -485,19 +499,25 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     --find the max multidegree, write it as a class alpha
     transDegX:= transpose degrees (X+Y);
     maxDegs:= for i from 0 to length(transDegX)-1 list max transDegX_i;
-    deg1basisA := select(basisA, w -> sum(degree(w))==1);
+
+    -- deg1basisA := select(basisA, w -> sum(degree(w))==1);
+    deg1basisA := IA.codim1Basis;
     -- m:=length unique degrees R;
     alpha:=sum(length deg1basisA,i->(basis(OneAti(degreeLength R,i),A))_0_0*maxDegs_i);
-    pointClass:=0;
-    for b in basisA do (
-        if sum(flatten(exponents(b)))==n then pointClass=b;
-    );
-    seg:=0;
+
+    -- pointClass:=0;
+    -- for b in basisA do (
+    --     if sum(flatten(exponents(b)))==n then pointClass=b;
+    -- );
+    pointClass := IA.pointClass;
+
     --find gb's
-    gbX := groebnerBasis(X+Y, Strategy=>"MGB");
-    gbY := groebnerBasis(Y, Strategy=>"MGB");
-    codimX := codim ideal leadTerm gbX;
-    codimY:= codim ideal leadTerm gbY;
+    -- gbX := groebnerBasis(X+Y, Strategy=>"MGB");
+    -- gbY := groebnerBasis(Y, Strategy=>"MGB");
+    -- codimX := codim ideal leadTerm gbX;
+    -- codimY:= codim ideal leadTerm gbY;
+    codimX := codim sX;
+    codimY := codim sY;
     dimX := dim sX;
     dimY := dim sY;
     -- dimX := n-codimX;
@@ -516,16 +536,14 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     "R"=>R,
     "A"=>A,
     "basisA"=>basisA,
-    "n"=>n,
+    "n"=>IA.ambientDim,
     "dimY"=>dimY,
-    "codimY"=>codimY,
-    "gbY"=>gbY,
+    "codimY"=>codim sY,
+    "gbY"=>gb sY,
     -- "maxDegs"=>maxDegs,
     "pointClass"=>pointClass
     };
     -------------------------------
-    -- clY:=chowClass(sY);
-    -- clY:=chowClass(Y,ShareInfo,CompMethod=>"prob");
     if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
     -- W:=X+Y;
     projectiveDegreesList := {};
@@ -535,7 +553,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     for i from 0 to dimX do (
         for w in basisA do (
             if sum(flatten exponents(w))==n-i then (
-                pd:=projectiveDegree(X, Y,{w,i},ShareInfo,opts);
+                pd:=projectiveDegree(sX, sY,{w,i},opts);
                 projectiveDegreesList = append(projectiveDegreesList,pd*w);
             );
         );
@@ -676,8 +694,6 @@ TEST ///
 restart
 needsPackage "EffIntThy"
 *}
-restart
-needsPackage "EffIntThy"
 R=MultiProjCoordRing({2,1});
 x=(gens R)_{0..2};
 y=(gens R)_{3..4};
@@ -685,7 +701,7 @@ I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
 B=ideal(y_0*I_1-y_1*I_0); ---blow up of this point...
 E=B+ideal (x_0,x_1);
 A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^3,b^2)
-s=Segre(E,B,A)
+s=Segre(E,B,A,Verbose=>true)
 assert(s == a^2 + a^2*b)
 ///
 
