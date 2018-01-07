@@ -77,8 +77,7 @@ ring Scheme := X -> ( X.ring )
 
 dim Scheme := X -> (
     if not X.?dim then (
-        ambientDim := numgens(ring X) - #(unique degrees ring X);
-        X.dim = ambientDim - codim X
+        X.dim = numgens(ring X) - #(unique degrees ring X) - codim(X);
     );
     return X.dim
 )
@@ -471,12 +470,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     -- clY:=chowClass(sY);
     -- clY:=chowClass(Y,ShareInfo,CompMethod=>"prob");
     if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
-    W:=X+Y;
-    Wg:=0;
-    G:=0;
-    pd:=0;
-    EqT:=0;
-    c={};
+    -- W:=X+Y;
     projectiveDegreesList := {};
     deltaDegreesList := {};
     --------------------------------------------------------
@@ -485,7 +479,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     for i from 0 to dimX do (
         for w in basisA do (
             if sum(flatten exponents(w))==n-i then (
-                pd=projectiveDegree(X, Y,{w,i},ShareInfo,opts);
+                pd:=projectiveDegree(X, Y,{w,i},ShareInfo,opts);
                 projectiveDegreesList = append(projectiveDegreesList,pd*w);
             );
         );
@@ -494,21 +488,18 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     --build Segre class recursivly from Proj Degs
     Gam:=sum(projectiveDegreesList);
     SegClass:=0_A;
-    temp7:=0;
-    temp9:=0;
     RHS:=sum(0..dimX,i->alpha^(dimY-i)*chowClass(sY))-Gam;
     for i from 0 to dimX do (
         for w in basisA do (
-            if sum(flatten exponents(w))==n-(dimX-i) then (
-                temp9=(pointClass//w);
-                temp7=RHS_(w)-(temp9*(1+alpha)^(dimY-sum(flatten exponents(temp9)))*SegClass)_(pointClass);
-                SegClass=SegClass+temp7*w;
+            if sum(flatten exponents(w))==codimX+i then (
+                L:=(pointClass//w);
+                C:=RHS_(w)-(L*(1+alpha)^(dimY-sum(flatten exponents(L)))*SegClass)_(pointClass);
+                SegClass=SegClass+C*w;
                 --<<"w= "<<w<<", SegClass= "<<SegClass<<" coeff= "<<(1+alpha)^(dimY-sum(flatten(exponents(temp9))))<<endl;
             );
         );
     );
     if opts.Verbose then <<"s(X,Y)= "<<SegClass<<endl;
-    -- use R;
     return SegClass;
 );
 
