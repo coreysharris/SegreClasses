@@ -185,24 +185,12 @@ projectiveDegree(Ideal, Ideal,List,MutableHashTable) := opts-> (X,Y,ChowElandDim
 
 projectiveDegrees = method(TypicalValue => List,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
 projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
-    R := ring(X);
-    -- A := chowRing(X);
     A := X.chowRing;
-    ShareInfo:=new MutableHashTable from {
-        "R"=>R,
-        "A"=>A,
-        "basisA"=>A.basis,
-        "n"=>A.ambientDim,
-        "dimY"=>dim Y,
-        "codimY"=>codim Y,
-        "gbY"=>gb Y,
-        "pointClass"=>A.pointClass
-    };
     projectiveDegreesList := {};
     for i from 0 to dim(X) do (
         for w in A.basis do (
             if sum(flatten exponents(w))==A.ambientDim-i then (
-                pd:=projectiveDegree(ideal X, ideal Y, {w,i}, ShareInfo,opts);
+                pd:=projectiveDegree(X, Y, {w,i},opts);
                 projectiveDegreesList = append(projectiveDegreesList,pd*w);
             );
         );
@@ -440,17 +428,11 @@ ChowRing (Ring):=(R)->(
     return ChowRing(R,h);
 );
 ChowRing (Ring,Symbol):=(R,h)->(
-    -- Rgens:=gens R;
     Rdegs:=degrees R;
-    -- degd:=0;
-    -- eqs:=0;
     ChDegs:=unique Rdegs;
     m:=length ChDegs;
-    -- C:=ZZ[h_1..h_m,Degrees=>ChDegs];
     C:= ZZ(monoid[(1..m) / (i -> (getSymbol "h")_i), Degrees=>ChDegs]);
     K:={};
-    -- inds:={};
-    -- rg:=0;
     ns:={};
     temp:=0;
     for d in ChDegs do (
@@ -476,61 +458,49 @@ Segre (Ideal,Ideal) :=opts-> (I1,I2) -> (
     return Segre(I1,I2,A,opts);
 );
 Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
+
     if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
+
     R :=ring Y;
-    n:=numgens(R)-length unique degrees R;
-    IA := intersectionRing(A,n);
-    sY := scheme(Y,chowRing=>IA);
-    sX := scheme(X+Y,chowRing=>IA);
-    kk:=coefficientRing R;
-    if opts.ProjDegMethod=="NAG" and char(kk)!=0 then (print "Use QQ for NAG"; return 0;);
-    basisA := IA.basis;
     irelHash := partition(degree, gens R);
     PDl := values irelHash / ideal;
     --this saturation might or might not be a good idea
     X=saturate(X,product(PDl));
     Y=saturate(Y,product(PDl));
-    --find the max multidegree, write it as a class alpha
-    transDegX:= transpose degrees (X+Y);
-    maxDegs:= for i from 0 to length(transDegX)-1 list max transDegX_i;
-    deg1basisA := IA.codim1Basis;
-    alpha:=sum(length deg1basisA,i->(basis(OneAti(degreeLength R,i),A))_0_0*maxDegs_i);
 
-    pointClass := IA.pointClass;
-    codimX := codim sX;
-    codimY := codim sY;
-    dimX := dim sX;
-    dimY := dim sY;
-    -------------------------------
+    n:=numgens(R)-length unique degrees R;
+    IA := intersectionRing(A,n);
+    sY := scheme(Y,chowRing=>IA);
+    sX := scheme(X+Y,chowRing=>IA);
+
+    if opts.ProjDegMethod=="NAG" and char(coefficientRing R)!=0 then (print "Use QQ for NAG"; return 0;);
+
+    --find the max multidegree, write it as a class alpha
+    transDegX := transpose degrees (X+Y);
+    maxDegs := for i from 0 to length(transDegX)-1 list max transDegX_i;
+    alpha := sum(length IA.codim1Basis,i->(basis(OneAti(degreeLength R,i),A))_0_0*maxDegs_i);
     if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
-    projectiveDegreesList := {};
-    -----Begin Main Process------------------------------
-    for i from 0 to dimX do (
-        for w in basisA do (
-            if sum(flatten exponents(w))==n-i then (
-                pd:=projectiveDegree(sX, sY,{w,i},opts);
-                projectiveDegreesList = append(projectiveDegreesList,pd*w);
-            );
-        );
-    );
-    -- projectiveDegreesList := projectiveDegrees(sX,sY);
+
+    projectiveDegreesList := projectiveDegrees(sX,sY);
     if opts.Verbose then <<"Projective degrees= "<<projectiveDegreesList<<endl;
+
     --build Segre class recursivly from Proj Degs
     Gam:=sum(projectiveDegreesList);
     SegClass:=0_A;
-    RHS:=sum(0..dimX,i->alpha^(dimY-i)*chowClass(sY))-Gam;
-    for i from 0 to dimX do (
-        for w in basisA do (
-            if sum(flatten exponents(w))==codimX+i then (
-                L:=(pointClass//w);
-                C:=RHS_(w)-(L*(1+alpha)^(dimY-sum(flatten exponents(L)))*SegClass)_(pointClass);
+    RHS:=sum(0..dim sX,i->alpha^(dim sY-i)*chowClass(sY))-Gam;
+    for i from 0 to dim sX do (
+        for w in IA.basis do (
+            if sum(flatten exponents(w))==(codim sX)+i then (
+                L:=(IA.pointClass//w);
+                C:=RHS_(w)-(L*(1+alpha)^(dim(sY)-sum(flatten exponents(L)))*SegClass)_(IA.pointClass);
                 SegClass=SegClass+C*w;
                 --<<"w= "<<w<<", SegClass= "<<SegClass<<" coeff= "<<(1+alpha)^(dimY-sum(flatten(exponents(temp9))))<<endl;
             );
         );
     );
     if opts.Verbose then <<"s(X,Y)= "<<SegClass<<endl;
+
     return SegClass;
 );
 
