@@ -211,7 +211,7 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
 
 chowClass=method(TypicalValue=>ZZ,Options => {CompMethod=>"multidegree"});
 chowClass Scheme := opts -> X -> (
-    if not X.?chowClass then X.chowClass = chowClass(ideal X, X.chowRing);
+    if not X.?chowClass then X.chowClass = chowClass(ideal X,ring(X.chowRing));
     return X.chowClass
 )
 chowClass (Ideal,Ring) := opts -> (I,A) -> (
@@ -465,6 +465,8 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
     -- sX := scheme(X, ChowRing => A);
     R :=ring Y;
+    n:=numgens(R)-length unique degrees R;
+    IA := intersectionRing(A,n);
     sY := scheme(Y,chowRing=>IA);
     sX := scheme(X+Y,chowRing=>IA);
     -- sY := scheme(Y);
@@ -478,7 +480,6 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     --this saturation might or might not be a good idea
     X=saturate(X,product(PDl));
     Y=saturate(Y,product(PDl));
-    n:=numgens(R)-length unique degrees R;
     --find the max multidegree, write it as a class alpha
     transDegX:= transpose degrees (X+Y);
     maxDegs:= for i from 0 to length(transDegX)-1 list max transDegX_i;
@@ -517,7 +518,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     "dimY"=>dimY,
     "codimY"=>codimY,
     "gbY"=>gbY,
-    -- "maxDegs"=>maxDegs,
+    "maxDegs"=>maxDegs,
     "pointClass"=>pointClass
     };
     -------------------------------
