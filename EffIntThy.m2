@@ -38,7 +38,6 @@ ReverseDictionary = value Core#"private dictionary"#"ReverseDictionary"
 
 IntersectionRing = new Type of MutableHashTable
 globalAssignment IntersectionRing
-
 intersectionRing = method(TypicalValue => IntersectionRing)
 intersectionRing(Ring,ZZ) := (R,ambientdim) -> (
     basisR := flatten entries sort basis R;
@@ -57,12 +56,10 @@ ring IntersectionRing := R -> ( R.ring )
 pointClass = R -> ( R.pointClass )
 codim1Basis = R -> ( R.codim1Basis )
 ambientDim = R -> ( R.ambientDim )
-basis IntersectionRing := R -> ( print("basis"); R.basis )
-
+basis IntersectionRing := R -> ( R.basis )
 
 Scheme = new Type of MutableHashTable
 globalAssignment Scheme
-
 toString Scheme := net Scheme := X -> (
     if hasAttribute(X,ReverseDictionary) then toString getAttribute(X,ReverseDictionary)
     else "a scheme")
@@ -71,34 +68,25 @@ Scheme#{Standard,AfterPrint} = X -> (
     -- << "a projective scheme in PP^" << dim(X.AmbientSpace) << " defined by " << X.Ideal << endl;
 )
 
-scheme = method(TypicalValue => Scheme, Options => {chowRing => null})
+scheme = method(TypicalValue => Scheme, Options => {})
 scheme Ideal :=  opts -> I -> (
     return new Scheme from {
         global ideal => I,
         global ring => ring I,
         global coefficientRing => coefficientRing ring I,
-        chowRing => opts.chowRing,
-        -- global gb => null,
-        -- global dim => null,
-        -- global codim => null,
-        -- global chowClass => null
     }
 )
 
 ideal Scheme := X -> ( X.ideal )
-
+ring Scheme := X -> ( X.ring )
 codim Scheme := {} >> opts -> X -> (
     if not X.?codim then ( X.codim = codim ideal leadTerm gb(X) );
     return X.codim
 )
-
 gb Scheme := opts -> X -> (
     if not X.?gb then ( X.gb = groebnerBasis(ideal X) );
     return X.gb
 )
-
-ring Scheme := X -> ( X.ring )
-
 dim Scheme := X -> (
     if not X.?dim then (
         X.dim = numgens(ring X) - #(unique degrees ring X) - codim(X);
@@ -107,81 +95,62 @@ dim Scheme := X -> (
 )
 
 projectiveDegree = method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
-projectiveDegree (Ideal,Ideal,List) :=opts-> (I1,I2,ChowElandDim) -> (
-    if opts.Verbose then print "TODO Write Wrapper, not done";
-    return 0;
+projectiveDegree (Ideal,Ideal,RingElement) :=opts-> (IX,IY,w) -> (
+    Y := scheme(IY);
+    X := scheme(IX+IY);
+    R := ring Y;
+    Y.chowRing = intersectionRing(ring w, numgens(R)-length unique degrees R);
+    X.chowRing = Y.chowRing;
+    X.equations = IX;
+
+    return projectiveDegree(X,Y,w)
 );
-projectiveDegree(Scheme,Scheme,List) := opts -> (sX,sY,c) -> (
+projectiveDegree(Scheme,Scheme,RingElement) := opts -> (sX,sY,w) -> (
     A := sX.chowRing;
-    Info := new MutableHashTable from {
-        "R"=> ring sX,
-        "A"=> ring A,
-        "basisA"=> A.basis,
-        "n"=> A.ambientDim,
-        "dimY"=> dim sY,
-        "codimY"=> codim sY,
-        "gbY"=> gb sY,
-        "pointClass"=> A.pointClass
-    };
-        
-    projectiveDegree(ideal sX, ideal sY, c, Info, opts)
-);
-projectiveDegree(Ideal, Ideal,List,MutableHashTable) := opts-> (X,Y,ChowElandDim,Info) -> (
-    --<<"ProjDegMethod= "<<opts.ProjDegMethod<<endl;
+    X := ideal sX;
+    Y := ideal sY;
     R:=ring X;
-    w:=first ChowElandDim;
-    i:=last ChowElandDim;
     kk:=coefficientRing(R);
-    -- t:=symbol t;
-    -- S:=kk[gens R,t];
-    S:=kk(monoid[gens R,getSymbol "t"]);
-    t := last gens S;
     Ls:=0;
-    LA:=0;
-    pointClass:=Info#"pointClass";
-    v:=pointClass//w;
-    dimY:=Info#"dimY";
-    pd:=0;
-    ve:=flatten exponents(v);
-    for i from 0 to length(ve)-1 do (
-        if ve_i!=0 then (
-            Ls=Ls+sum(ve_i,j->ideal(random(OneAti(degreeLength R,i),R)));
+    wDims:=flatten exponents(A.pointClass//w);
+    wTotalDim := sum wDims;
+    for i from 0 to length(wDims)-1 do (
+        if wDims_i!=0 then (
+            Ls=Ls+sum(wDims_i,j->ideal(random(OneAti(degreeLength R,i),R)));
         );
     );
-    Wg:=flatten entries gens (makeMultiHom(X,Y,Info)+Ls);
-    G:=ideal(for j from 1 to dimY-i list sum(Wg,g->random(kk)*g));
-    irelHash := partition(degree, gens R);
-    PDl := values irelHash / ideal;
-    for p in PDl do (
-        LA=LA+sub(ideal(1-sum(numgens(p),i->random(kk)*p_i)),R);
-    );
+    Wg:=flatten entries gens (makeMultiHom(X,sY)+Ls);
+    G:=ideal(for j from 1 to dim(sY)-wTotalDim list sum(Wg,g->random(kk)*g));
+    irrelevantIdealsHash := partition(degree, gens R);
+    irrelevantIdeals := values irrelevantIdealsHash / ideal;
+    LA := sum(irrelevantIdeals, p -> sub(ideal(1-sum(numgens(p),i->random(kk)*p_i)),R));
+
+    pd := 0;
     if opts.ProjDegMethod=="Sat" then (
-        pd = degree saturate(Y+Ls+G+LA,X);
-    )
-    else if(opts.ProjDegMethod=="NAG") then (
+        pd = degree saturate(Y+Ls+G+LA,X)
+    ) else if(opts.ProjDegMethod=="NAG") then (
         Sys:=flatten entries gens(Y+Ls+G+LA);
         sols:=solveSystem Sys;
         Fsys:=flatten entries gens (X+Y);
         badsols:=0;
-        temp:=true;
         for s in sols do (
-            temp=true;
+            badSol:=true;
             for f in Fsys do (
-                if sub(f,matrix{coordinates s})>1e-10 then temp=false;
+                if sub(f,matrix{coordinates s})>1e-10 then badSol=false;
             );
-            if temp==true then badsols=badsols+1;
+            if badSol==true then badsols=badsols+1;
         );
-        pd=#sols-badsols;
+        pd = #sols-badsols
     ) else (
-        --Defualt Method
-        --print "default used";
+        --Default Method
+        S:=kk(monoid[gens R,getSymbol "t"]);
+        t := last gens S;
         EqT:=ideal( 1-t*sum((numgens X),j->(random(kk)*substitute(X_j,S))));
         ZeroDimGB:=groebnerBasis(sub(Y+Ls+G+LA,S)+EqT, Strategy=>"F4");
-        pd=numColumns basis(cokernel leadTerm ZeroDimGB);
+        pd = numColumns basis(cokernel leadTerm ZeroDimGB);
     );
     return pd;
 );
-
 
 projectiveDegrees = method(TypicalValue => List,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
 projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
@@ -190,7 +159,7 @@ projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
     for i from 0 to dim(X) do (
         for w in A.basis do (
             if sum(flatten exponents(w))==A.ambientDim-i then (
-                pd:=projectiveDegree(X, Y, {w,i},opts);
+                pd:=projectiveDegree(X, Y, w,opts);
                 projectiveDegreesList = append(projectiveDegreesList,pd*w);
             );
         );
@@ -203,8 +172,7 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
     if opts.Verbose then print "eXYmult(I,J) computes e_XY where X is the top equidimensional component of V(I) and Y=V(J) (Y is assumed to be irreducible)";
     Iinfo:=new MutableHashTable;
     A:=ChowRing(ring(I2));
-    Iinfo#"A"=A;
-    clX:=chowClass(I1+I2,Iinfo,CompMethod=>"multidegree");
+    clX:=chowClass(I1+I2,A,CompMethod=>"multidegree");
     seg:= Segre(I1,I2,A,opts);
     mons:=flatten entries monomials clX;
     segMons:=sum(for m in mons list m*seg_(m));
@@ -214,89 +182,42 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
 
 chowClass=method(TypicalValue=>ZZ,Options => {CompMethod=>"multidegree"});
 chowClass Scheme := opts -> X -> (
-    if not X.?chowClass then X.chowClass = chowClass(ideal X,ring(X.chowRing));
-    return X.chowClass
-)
-chowClass (Ideal,Ring) := opts -> (I,A) -> (
-    -- R:=ring(I);
-    return sub(multidegree I, matrix{ gens A })
-)
-chowClass (Ideal) := opts -> (I) -> (
-    -- R:=ring(I);
-    A:=ChowRing(ring I);
-    -- if opts.CompMethod=="multidegree" then (
-        return sub(multidegree I, matrix{ gens A });
-    -- );
-    -- Iinfo:=new MutableHashTable;
-    -- Iinfo#"A"=A;
-    -- degs:=unique degrees R;
-    -- B:=flatten entries sort basis A;
-    -- n:=numgens(R)-length(degs);
-    -- tempId:={};
-    -- PDl:={};
-    -- for d in degs do (
-    --     tempId={};
-    --     for y in gens(R) do (
-    --         if degree(y)==d then (
-    --             tempId=append(tempId,y);
-    --         );
-    --     );
-    --     PDl=append(PDl,ideal(tempId));
-    -- );
-    -- pointClass:=0;
-    -- for b in B do (
-    --     if sum(flatten(exponents(b)))==n then pointClass=b;
-    -- );
-    -- gbY := groebnerBasis(I, Strategy=>"MGB");
-    -- codimY:= codim ideal leadTerm gbY;
-    -- Iinfo#"PDl"=PDl;
-    -- Iinfo#"B"=B;
-    -- Iinfo#"pointClass"=pointClass;
-    -- Iinfo#"gbY"=gbY;
-    -- Iinfo#"codimY"=codimY;
-    -- Iinfo#"m"=length degs;
-    -- return chowClass(I,Iinfo,CompMethod=>opts.CompMethod);
-);
-chowClass (Ideal,MutableHashTable):=opts->(I,Info)->(
-    R:=ring I;
-    A:=Info#"A";
+    -- if not X.?chowClass then X.chowClass = chowClass(ideal X,ring(X.chowRing));
+    if X.?chowClass then return X.chowClass;
+    R := ring X;
+    IA := X.chowRing;
     classI:=0;
     if opts.CompMethod=="multidegree" then (
-        md:=multidegree (I);
-        classI=sub(md,matrix{gens(A)});
+        md:=multidegree (ideal X);
+        classI=sub(md,matrix{gens ring IA});
     ) else (
-        irelHash := partition(degree, gens R);
-        PDl := values irelHash / ideal;
-        basisA:=Info#"basisA";
-        c:={};
+        irrelevantIdealsHash := partition(degree, gens R);
+        irrelevantIdeals := values irrelevantIdealsHash / ideal;
         ZeroDimGB:=0;
-        ve:=0;
-        Ls:=0;
-        v:=0;
-        LA:=0;
-        gbY:=Info#"gbY";
-        -- m:=Info#"m";
-        codimY:=Info#"codimY";
-        pointClass:=Info#"pointClass";
         kk:=coefficientRing(R);
-        for p in PDl do (
-            LA=LA+ideal(1-sum(numgens(p),i->random(kk)*p_i));
-        );
-        for w in basisA do if sum(flatten(exponents(w)))==codimY then c=append(c,w);
+        LA := sum(irrelevantIdeals, p -> sub(ideal(1-sum(numgens(p),i->random(kk)*p_i)),R));
+        c := for w in IA.basis list if sum(flatten(exponents(w)))==codim X then w else continue;
         for w in c do (
-            Ls=0;
-            v=pointClass//w;
-            ve=flatten exponents(v);
-            for i from 0 to length(ve)-1 do (
-                if ve_i!=0 then (
-                    Ls=Ls+sum(ve_i,j->ideal(random(OneAti(degreeLength R,i),R)));
+            Ls:=0;
+            wDims:=flatten exponents(IA.pointClass//w);
+            for i from 0 to length(wDims)-1 do (
+                if wDims_i!=0 then (
+                    Ls=Ls+sum(wDims_i,j->ideal(random(OneAti(degreeLength R,i),R)));
                 );
             );
-            ZeroDimGB=ideal groebnerBasis(ideal(gbY)+Ls+LA, Strategy=>"F4");
+            ZeroDimGB=ideal groebnerBasis(ideal(gb X)+Ls+LA, Strategy=>"F4");
             classI=classI+(numColumns basis(cokernel leadTerm ZeroDimGB))*w;
         );
     );
-    return classI;
+    X.chowClass = classI;
+    return X.chowClass
+);
+chowClass (Ideal,Ring) := opts -> (I,A) -> (
+    return sub(multidegree I, matrix{ gens A })
+)
+chowClass (Ideal) := opts -> (I) -> (
+    A:=ChowRing(ring I);
+    return sub(multidegree I, matrix{ gens A });
 );
 
 isMultiHomogeneous=method(TypicalValue=>Boolean);
@@ -332,14 +253,12 @@ makeMultiHom (Ideal,Ideal,ZZ):=(K,J,dimY)->(
     kk:=coefficientRing R;
     gensI:= delete(0_R,flatten sort entries gens K);
     homGens:={};
-    transDegI:= transpose degrees I;
-    maxDegs:= for i from 0 to #(transDegI)-1 list max transDegI_i;
+    maxDegs := for d in transpose degrees I list max d;
     curIrel:=0;
     degDif:=0;
     tempfGens:=0;
 
-    irelHash := partition(degree, gens R);
-    PDl := values irelHash / ideal;
+    irrelevantIdealsHash := partition(degree, gens R);
 
     for f in gensI do (
         if degree(f)==maxDegs then (
@@ -348,7 +267,7 @@ makeMultiHom (Ideal,Ideal,ZZ):=(K,J,dimY)->(
             degDif=maxDegs-degree(f);
             tempfGens=ideal(f);
             for i from 0 to #degDif-1 do (
-                curIrel=irelHash#(OneAti(degreeLength R,i));
+                curIrel=irrelevantIdealsHash#(OneAti(degreeLength R,i));
                 tempfGens=tempfGens*ideal(for g in curIrel list g^(degDif_i));
             );
         homGens=join(homGens,flatten entries gens tempfGens);
@@ -357,21 +276,20 @@ makeMultiHom (Ideal,Ideal,ZZ):=(K,J,dimY)->(
     return ideal for j from 0 to dimY list sum(homGens,l->l*random(kk)*random(0,4));
     --return ideal homGens;
 );
-makeMultiHom (Ideal,Ideal,MutableHashTable):=(K,J,InfoHash)->(
-    I:=K+J;
+makeMultiHom (Ideal,Scheme):=(eqsX,Y)->(
+    J := ideal Y;
+    I:=eqsX+J;
     R:=ring I;
+    n:=numgens(R)-length(unique degrees R);
     kk:=coefficientRing R;
-    gensI:= delete(0_R,flatten sort entries gens K);
+    gensI:= delete(0_R,flatten sort entries gens eqsX);
     homGens:={};
-    -- maxDegs:=InfoHash#"maxDegs";
-    transDegX:= transpose degrees (I);
-    maxDegs:= for i from 0 to length(transDegX)-1 list max transDegX_i;
+    maxDegs := for d in transpose degrees I list max d;
     curIrel:=0;
     degDif:=0;
     tempfGens:=0;
 
-    irelHash := partition(degree, gens R);
-    PDl := values irelHash / ideal;
+    irrelevantIdealsHash := partition(degree, gens R);
 
     for f in gensI do (
         if degree(f)==maxDegs then (
@@ -380,7 +298,36 @@ makeMultiHom (Ideal,Ideal,MutableHashTable):=(K,J,InfoHash)->(
             degDif=maxDegs-degree(f);
             tempfGens=ideal(f);
             for i from 0 to #degDif-1 do (
-                curIrel=irelHash#(OneAti(degreeLength R,i));
+                curIrel=irrelevantIdealsHash#(OneAti(degreeLength R,i));
+                tempfGens=tempfGens*ideal(for g in curIrel list g^(degDif_i));
+            );
+        homGens=join(homGens,flatten entries gens tempfGens);
+        );
+    );
+    return ideal for j from 0 to dim(Y) list sum(homGens,l->l*random(kk)*random(0,4));
+    --return ideal homGens;
+);
+makeMultiHom (Ideal,Ideal,MutableHashTable):=(K,J,InfoHash)->(
+    I:=K+J;
+    R:=ring I;
+    kk:=coefficientRing R;
+    gensI:= delete(0_R,flatten sort entries gens K);
+    homGens:={};
+    maxDegs := for d in transpose degrees I list max d;
+    curIrel:=0;
+    degDif:=0;
+    tempfGens:=0;
+
+    irrelevantIdealsHash := partition(degree, gens R);
+
+    for f in gensI do (
+        if degree(f)==maxDegs then (
+            homGens=append(homGens,f);
+        ) else (
+            degDif=maxDegs-degree(f);
+            tempfGens=ideal(f);
+            for i from 0 to #degDif-1 do (
+                curIrel=irrelevantIdealsHash#(OneAti(degreeLength R,i));
                 tempfGens=tempfGens*ideal(for g in curIrel list g^(degDif_i));
             );
             homGens=join(homGens,flatten entries gens tempfGens);
@@ -418,7 +365,6 @@ MultiProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
         );
         ind=ind+1;
     );
-    -- return kk[x_0..x_(numVars-1),Degrees=>degs];
     return kk(monoid[vars(0..numVars-1),Degrees=>degs]);
 );
 
@@ -463,45 +409,44 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
 
     R :=ring Y;
-    irelHash := partition(degree, gens R);
-    PDl := values irelHash / ideal;
-    --this saturation might or might not be a good idea
-    X=saturate(X,product(PDl));
-    Y=saturate(Y,product(PDl));
-
     n:=numgens(R)-length unique degrees R;
     IA := intersectionRing(A,n);
-    sY := scheme(Y,chowRing=>IA);
-    sX := scheme(X+Y,chowRing=>IA);
+
+    sY := scheme(Y);
+    sY.chowRing = IA;
+
+    sX := scheme(X+Y);
+    sX.chowRing = IA;
+    sX.equations = X;
+    
 
     if opts.ProjDegMethod=="NAG" and char(coefficientRing R)!=0 then (print "Use QQ for NAG"; return 0;);
 
     --find the max multidegree, write it as a class alpha
-    transDegX := transpose degrees (X+Y);
-    maxDegs := for i from 0 to length(transDegX)-1 list max transDegX_i;
+    maxDegs := for d in transpose degrees (X+Y) list max d;
     alpha := sum(length IA.codim1Basis,i->(basis(OneAti(degreeLength R,i),A))_0_0*maxDegs_i);
     if opts.Verbose then <<"[Y]= "<<chowClass(sY)<<", alpha= "<<alpha<<endl;
 
+    -- All the hard work is hidden in the next line
     projectiveDegreesList := projectiveDegrees(sX,sY);
     if opts.Verbose then <<"Projective degrees= "<<projectiveDegreesList<<endl;
 
     --build Segre class recursivly from Proj Degs
-    Gam:=sum(projectiveDegreesList);
-    SegClass:=0_A;
-    RHS:=sum(0..dim sX,i->alpha^(dim sY-i)*chowClass(sY))-Gam;
+    segreClass:=0_A;
+    RHS:=sum(0..dim sX,i->alpha^(dim sY-i)*chowClass(sY)) - sum(projectiveDegreesList);
+    basisByCodim := partition(i -> sum(flatten exponents i), IA.basis);
     for i from 0 to dim sX do (
-        for w in IA.basis do (
-            if sum(flatten exponents(w))==(codim sX)+i then (
-                L:=(IA.pointClass//w);
-                C:=RHS_(w)-(L*(1+alpha)^(dim(sY)-sum(flatten exponents(L)))*SegClass)_(IA.pointClass);
-                SegClass=SegClass+C*w;
-                --<<"w= "<<w<<", SegClass= "<<SegClass<<" coeff= "<<(1+alpha)^(dimY-sum(flatten(exponents(temp9))))<<endl;
-            );
+        for w in basisByCodim#(codim(sX)+i) do (
+            L:=(IA.pointClass//w);
+            C:=RHS_(w)-(L*(1+alpha)^(dim(sY)-sum(flatten exponents(L)))*segreClass)_(IA.pointClass);
+            segreClass=segreClass+C*w;
+            --<<"w= "<<w<<", SegClass= "<<SegClass<<" coeff= "<<(1+alpha)^(dimY-sum(flatten(exponents(temp9))))<<endl;
         );
     );
-    if opts.Verbose then <<"s(X,Y)= "<<SegClass<<endl;
 
-    return SegClass;
+    if opts.Verbose then <<"s(X,Y)= "<<segreClass<<endl;
+
+    return segreClass;
 );
 
 
@@ -518,23 +463,11 @@ OneAti=(dl,i)->(
     return vec;
 )
 
-irrell=R->(
-    Rgens:=gens R;
-    Rdegs:=degrees R;
-    bloks:=unique Rdegs;
-    irId:=ideal 1_R;
-    elList:={};
-    for a in bloks do (
-        elList={};
-        for r in Rgens do (
-            if degree(r)==a then (
-                elList=append(elList,r);
-            );
-        );
-        irId=irId*ideal(elList)
-    );
-    return irId;
-)
+
+beginDocumentation()
+multidoc ///
+
+///
 
 
 TEST ///
