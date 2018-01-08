@@ -22,6 +22,7 @@ export {
    "isMultiHomogeneous",
    "Segre",
    "projectiveDegree",
+   "projectiveDegrees",
    "makeMultiHom",
    "HomMethod",
    "ProjDegMethod",
@@ -70,10 +71,22 @@ Scheme#{Standard,AfterPrint} = X -> (
 
 scheme = method(TypicalValue => Scheme, Options => {})
 scheme Ideal :=  opts -> I -> (
+    R := ring I;
+    A := ChowRing(R);
     return new Scheme from {
         global ideal => I,
-        global ring => ring I,
+        global ring => R,
         global coefficientRing => coefficientRing ring I,
+        global chowRing => intersectionRing(A, numgens(R)-length unique degrees R)
+    }
+)
+scheme(Ideal,IntersectionRing) :=  opts -> (I,intRing) -> (
+    R := ring I;
+    return new Scheme from {
+        global ideal => I,
+        global ring => R,
+        global coefficientRing => coefficientRing ring I,
+        global chowRing => intRing
     }
 )
 
@@ -153,6 +166,15 @@ projectiveDegree(Scheme,Scheme,RingElement) := opts -> (sX,sY,w) -> (
 );
 
 projectiveDegrees = method(TypicalValue => List,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+projectiveDegrees(Ideal,Ideal) := opts -> (I,J) -> (
+    R :=ring J;
+    n:=numgens(R)-length unique degrees R;
+    IA := intersectionRing(ChowRing R,n);
+    Y := scheme(J,IA);
+    X := scheme(I+J,IA);
+    X.equations = I;
+    return projectiveDegrees(X,Y)    
+)
 projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
     A := X.chowRing;
     projectiveDegreesList := {};
@@ -307,34 +329,6 @@ makeMultiHom (Ideal,Scheme):=(eqsX,Y)->(
     return ideal for j from 0 to dim(Y) list sum(homGens,l->l*random(kk)*random(0,4));
     --return ideal homGens;
 );
-makeMultiHom (Ideal,Ideal,MutableHashTable):=(K,J,InfoHash)->(
-    I:=K+J;
-    R:=ring I;
-    kk:=coefficientRing R;
-    gensI:= delete(0_R,flatten sort entries gens K);
-    homGens:={};
-    maxDegs := for d in transpose degrees I list max d;
-    curIrel:=0;
-    degDif:=0;
-    tempfGens:=0;
-
-    irrelevantIdealsHash := partition(degree, gens R);
-
-    for f in gensI do (
-        if degree(f)==maxDegs then (
-            homGens=append(homGens,f);
-        ) else (
-            degDif=maxDegs-degree(f);
-            tempfGens=ideal(f);
-            for i from 0 to #degDif-1 do (
-                curIrel=irrelevantIdealsHash#(OneAti(degreeLength R,i));
-                tempfGens=tempfGens*ideal(for g in curIrel list g^(degDif_i));
-            );
-            homGens=join(homGens,flatten entries gens tempfGens);
-        );
-    );
-    return ideal for j from 0 to InfoHash#"dimY" list sum(homGens,l->l*random(kk)*random(0,4));
-);
 
 MultiProjCoordRing=method(TypicalValue=>Ring);
 MultiProjCoordRing (Symbol,List):=(x,l)->(
@@ -342,11 +336,11 @@ MultiProjCoordRing (Symbol,List):=(x,l)->(
     return MultiProjCoordRing(kk,x,l);
 );
 MultiProjCoordRing (Ring,List):=(kk,l)->(
-    x:=symbol x;
+    x:=getSymbol "x";
     return MultiProjCoordRing(kk,x,l);
 );
 MultiProjCoordRing (List):=(l)->(
-    x:=symbol x;
+    x:=getSymbol "x";
     kk:=ZZ/32749;
     return MultiProjCoordRing(kk,x,l);
 );
@@ -370,14 +364,14 @@ MultiProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
 
 ChowRing=method(TypicalValue=>QuotientRing);
 ChowRing (Ring):=(R)->(
-    h:=symbol h;
+    h := getSymbol "h";
     return ChowRing(R,h);
 );
 ChowRing (Ring,Symbol):=(R,h)->(
     Rdegs:=degrees R;
     ChDegs:=unique Rdegs;
     m:=length ChDegs;
-    C:= ZZ(monoid[(1..m) / (i -> (getSymbol "h")_i), Degrees=>ChDegs]);
+    C:= ZZ(monoid[h_1..h_m, Degrees=>ChDegs]);
     K:={};
     ns:={};
     temp:=0;
@@ -404,21 +398,15 @@ Segre (Ideal,Ideal) :=opts-> (I1,I2) -> (
     return Segre(I1,I2,A,opts);
 );
 Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
-
     if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
 
     R :=ring Y;
     n:=numgens(R)-length unique degrees R;
     IA := intersectionRing(A,n);
-
-    sY := scheme(Y);
-    sY.chowRing = IA;
-
-    sX := scheme(X+Y);
-    sX.chowRing = IA;
+    sY := scheme(Y,IA);
+    sX := scheme(X+Y,IA);
     sX.equations = X;
-    
 
     if opts.ProjDegMethod=="NAG" and char(coefficientRing R)!=0 then (print "Use QQ for NAG"; return 0;);
 
@@ -443,17 +431,13 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
             --<<"w= "<<w<<", SegClass= "<<SegClass<<" coeff= "<<(1+alpha)^(dimY-sum(flatten(exponents(temp9))))<<endl;
         );
     );
-
     if opts.Verbose then <<"s(X,Y)= "<<segreClass<<endl;
-
     return segreClass;
 );
-
 
 ----------------------------
 -- utility functions
 ----------------------------
-
 
 OneAti=(dl,i)->(
     vec:={};
@@ -500,6 +484,24 @@ chowClass(J,CompMethod=>"prob")
 -- A = ZZ[h]/(h^7)
 -- assert(Segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 assert(eXYmult(I,J,Verbose=>true)==1)
+///
+
+TEST ///
+-- union of coordinate axes in PP3 (diagonal)
+{*
+restart
+needsPackage "EffIntThy"
+*}
+R = MultiProjCoordRing({3,3})
+x = gens(R)
+D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
+X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
+pds = projectiveDegrees(X,D,Verbose=>true)
+A = ring first pds
+(a,b) = toSequence gens A
+l = {10*a^3*b^3, 6*a^2*b^3, 6*a^3*b^2, 3*a*b^3, 3*a^2*b^2, 3*a^3*b}
+pds = pds  / (i -> sub(i,A))
+assert(sort(pds)==sort(l))
 ///
 
 TEST ///
