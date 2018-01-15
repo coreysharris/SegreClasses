@@ -1,6 +1,6 @@
-newPackage( "EffIntThy",
-    Version =>"0.2",
-    Date => "Jan 3, 2018",
+newPackage( "SegreClasses",
+    Version =>"0.3",
+    Date => "Jan 15, 2018",
     Authors => {
         {Name => "Martin Helmer",
          Email => "martin.helmer@berkeley.edu",
@@ -173,7 +173,7 @@ projectiveDegrees(Ideal,Ideal) := opts -> (I,J) -> (
     Y := scheme(J,IA);
     X := scheme(I+J,IA);
     X.equations = I;
-    return projectiveDegrees(X,Y)    
+    return projectiveDegrees(X,Y)
 )
 projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
     A := X.chowRing;
@@ -458,7 +458,7 @@ TEST ///
 -- union of coordinate axes in PP3 (diagonal)
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 R = MultiProjCoordRing({3,3})
 x = gens(R)
@@ -472,7 +472,7 @@ assert(s == 3*(a^3*b^2+a^2*b^3)-10*(a^3*b^3))
 TEST ///
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 R=MultiProjCoordRing({6})
 x=gens(R)
@@ -490,7 +490,7 @@ TEST ///
 -- union of coordinate axes in PP3 (diagonal)
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 R = MultiProjCoordRing({3,3})
 x = gens(R)
@@ -507,7 +507,7 @@ assert(sort(pds)==sort(l))
 TEST ///
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 R=MultiProjCoordRing({6})
 x=gens(R)
@@ -522,7 +522,7 @@ assert(Segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 TEST ///
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 R = ZZ/32003[x,y,z,w];
 I = ideal(-z^2+y*w,-y*z+x*w)
@@ -533,7 +533,7 @@ assert(eXYmult(I,J)==2)
 TEST ///
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 -- Cx is a hyperplane section on a smooth quadric surface
 -- embedded in the diagonal of P3xP3
@@ -553,7 +553,7 @@ assert(s == 2*(a^3*b^2+a^2*b^3-a^3*b^3))
 TEST ///
 {*
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 *}
 R=MultiProjCoordRing({2,1});
 x=(gens R)_{0..2};
@@ -569,10 +569,10 @@ assert(s == a^2 + a^2*b)
 end
 
 restart
-check "EffIntThy"
+check "SegreClasses"
 
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 kk=ZZ/32749
 R = MultiProjCoordRing(kk,{2,3})
 x=(gens R)_{0..2}
@@ -582,7 +582,7 @@ J=ideal(x_1^2*x_0*y_3^2-x_0^3*y_2*y_0-x_0^3*y_0^2)
 time seg=Segre(I,J)
 
 restart
-needsPackage "EffIntThy"
+needsPackage "SegreClasses"
 kk=ZZ/32749
 R = kk[x,y,z,t]
 PP3xPP3 = MultiProjCoordRing(kk,{3,3})
