@@ -66,7 +66,6 @@ toString Scheme := net Scheme := X -> (
     else "a scheme")
 Scheme#{Standard,AfterPrint} = X -> (
     << concatenate(interpreterDepth:"o") << lineNumber << " : "
-    -- << "a projective scheme in PP^" << dim(X.AmbientSpace) << " defined by " << X.Ideal << endl;
 )
 
 scheme = method(TypicalValue => Scheme, Options => {})
@@ -267,36 +266,8 @@ isMultiHomogeneous RingElement:=f->(
 );
 
 makeMultiHom=method(TypicalValue=>Ideal);
---TODO Replace this (Ideal,Ideal,ZZ) version with a wrapper for the Hash input version below
-makeMultiHom (Ideal,Ideal,ZZ):=(K,J,dimY)->(
-    I:=K+J;
-    R:=ring I;
-    n:=numgens(R)-length(unique degrees R);
-    kk:=coefficientRing R;
-    gensI:= delete(0_R,flatten sort entries gens K);
-    homGens:={};
-    maxDegs := for d in transpose degrees I list max d;
-    curIrel:=0;
-    degDif:=0;
-    tempfGens:=0;
-
-    irrelevantIdealsHash := partition(degree, gens R);
-
-    for f in gensI do (
-        if degree(f)==maxDegs then (
-            homGens=append(homGens,f);
-        ) else (
-            degDif=maxDegs-degree(f);
-            tempfGens=ideal(f);
-            for i from 0 to #degDif-1 do (
-                curIrel=irrelevantIdealsHash#(OneAti(degreeLength R,i));
-                tempfGens=tempfGens*ideal(for g in curIrel list g^(degDif_i));
-            );
-        homGens=join(homGens,flatten entries gens tempfGens);
-        );
-    );
-    return ideal for j from 0 to dimY list sum(homGens,l->l*random(kk)*random(0,4));
-    --return ideal homGens;
+makeMultiHom (Ideal,Ideal):=(I,J) -> (
+    makeMultiHom(I, scheme(J))
 );
 makeMultiHom (Ideal,Scheme):=(eqsX,Y)->(
     J := ideal Y;
