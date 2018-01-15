@@ -10,17 +10,17 @@ newPackage( "SegreClasses",
          HomePage => "http://coreyharris.name"}
     },
     Headline => "Computes s(X,Y) in  A*(P^n1x...xP^nm)",
-    PackageImports => {"NumericalAlgebraicGeometry"},
+    PackageImports => {"NumericalAlgebraicGeometry","CharacteristicClasses"},
     DebuggingMode => false,
     Reload => true
 );
 
 export {
-   "ChowRing",
+   "makeChowRing",
    "chowRing",
-   "MultiProjCoordRing",
-   "isMultiHomogeneous",
-   "Segre",
+   "makeProjCoordRing",
+   "isMultiHom",
+   "segre",
    "projectiveDegree",
    "projectiveDegrees",
    "makeMultiHom",
@@ -28,9 +28,10 @@ export {
    "ProjDegMethod",
    "SloppinessLevel",
    "Sparsity",
-   "CompMethod",
+   "CompMeth",
    "eXYmult",
-   "chowClass"
+   "chowClass",
+   "InterProd"
 }
 
 hasAttribute = value Core#"private dictionary"#"hasAttribute"
@@ -71,7 +72,7 @@ Scheme#{Standard,AfterPrint} = X -> (
 scheme = method(TypicalValue => Scheme, Options => {})
 scheme Ideal :=  opts -> I -> (
     R := ring I;
-    A := ChowRing(R);
+    A := makeChowRing(R);
     return new Scheme from {
         global ideal => I,
         global ring => R,
@@ -168,7 +169,7 @@ projectiveDegrees = method(TypicalValue => List,Options => {HomMethod=>2,ProjDeg
 projectiveDegrees(Ideal,Ideal) := opts -> (I,J) -> (
     R :=ring J;
     n:=numgens(R)-length unique degrees R;
-    IA := intersectionRing(ChowRing R,n);
+    IA := intersectionRing(makeChowRing R,n);
     Y := scheme(J,IA);
     X := scheme(I+J,IA);
     X.equations = I;
@@ -192,23 +193,23 @@ eXYmult=method(TypicalValue=>ZZ,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",S
 eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
     if opts.Verbose then print "eXYmult(I,J) computes e_XY where X is the top equidimensional component of V(I) and Y=V(J) (Y is assumed to be irreducible)";
     Iinfo:=new MutableHashTable;
-    A:=ChowRing(ring(I2));
-    clX:=chowClass(I1+I2,A,CompMethod=>"multidegree");
-    seg:= Segre(I1,I2,A,opts);
+    A:=makeChowRing(ring(I2));
+    clX:=chowClass(I1+I2,A,CompMeth=>"multidegree");
+    seg:= segre(I1,I2,A,opts);
     mons:=flatten entries monomials clX;
     segMons:=sum(for m in mons list m*seg_(m));
-    if opts.Verbose then <<"[X]= "<<clX<<" these monomials in Segre class= "<<segMons<<endl;
+    if opts.Verbose then <<"[X]= "<<clX<<" these monomials in segre class= "<<segMons<<endl;
     return lift(segMons//clX,ZZ);
 );
 
-chowClass=method(TypicalValue=>ZZ,Options => {CompMethod=>"multidegree"});
+chowClass=method(TypicalValue=>ZZ,Options => {CompMeth=>"multidegree"});
 chowClass Scheme := opts -> X -> (
     -- if not X.?chowClass then X.chowClass = chowClass(ideal X,ring(X.chowRing));
     if X.?chowClass then return X.chowClass;
     R := ring X;
     IA := X.chowRing;
     classI:=0;
-    if opts.CompMethod=="multidegree" then (
+    if opts.CompMeth=="multidegree" then (
         md:=multidegree (ideal X);
         classI=sub(md,matrix{gens ring IA});
     ) else (
@@ -237,12 +238,12 @@ chowClass (Ideal,Ring) := opts -> (I,A) -> (
     return sub(multidegree I, matrix{ gens A })
 )
 chowClass (Ideal) := opts -> (I) -> (
-    A:=ChowRing(ring I);
+    A:=makeChowRing(ring I);
     return sub(multidegree I, matrix{ gens A });
 );
 
-isMultiHomogeneous=method(TypicalValue=>Boolean);
-isMultiHomogeneous Ideal:=I->(
+isMultiHom=method(TypicalValue=>Boolean);
+isMultiHom Ideal:=I->(
     Igens:=flatten entries gens(I);
     d:=0;
     fmons:=0;
@@ -261,8 +262,8 @@ isMultiHomogeneous Ideal:=I->(
     );
 return true;
 );
-isMultiHomogeneous RingElement:=f->(
-    return isMultiHomogeneous(ideal(f));
+isMultiHom RingElement:=f->(
+    return isMultiHom(ideal(f));
 );
 
 makeMultiHom=method(TypicalValue=>Ideal);
@@ -301,21 +302,21 @@ makeMultiHom (Ideal,Scheme):=(eqsX,Y)->(
     --return ideal homGens;
 );
 
-MultiProjCoordRing=method(TypicalValue=>Ring);
-MultiProjCoordRing (Symbol,List):=(x,l)->(
+makeProjCoordRing=method(TypicalValue=>Ring);
+makeProjCoordRing (Symbol,List):=(x,l)->(
     kk:=ZZ/32749;
-    return MultiProjCoordRing(kk,x,l);
+    return makeProjCoordRing(kk,x,l);
 );
-MultiProjCoordRing (Ring,List):=(kk,l)->(
+makeProjCoordRing (Ring,List):=(kk,l)->(
     x:=getSymbol "x";
-    return MultiProjCoordRing(kk,x,l);
+    return makeProjCoordRing(kk,x,l);
 );
-MultiProjCoordRing (List):=(l)->(
+makeProjCoordRing (List):=(l)->(
     x:=getSymbol "x";
     kk:=ZZ/32749;
-    return MultiProjCoordRing(kk,x,l);
+    return makeProjCoordRing(kk,x,l);
 );
-MultiProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
+makeProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
     if not isField(kk) then (
         <<"The coefficent ring must be a field, using the default field kk=ZZ/32749"<<endl;
         kk=ZZ/32749;
@@ -333,12 +334,12 @@ MultiProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
     return kk(monoid[vars(0..numVars-1),Degrees=>degs]);
 );
 
-ChowRing=method(TypicalValue=>QuotientRing);
-ChowRing (Ring):=(R)->(
+makeChowRing=method(TypicalValue=>QuotientRing);
+makeChowRing (Ring):=(R)->(
     h := getSymbol "h";
-    return ChowRing(R,h);
+    return makeChowRing(R,h);
 );
-ChowRing (Ring,Symbol):=(R,h)->(
+makeChowRing (Ring,Symbol):=(R,h)->(
     Rdegs:=degrees R;
     ChDegs:=unique Rdegs;
     m:=length ChDegs;
@@ -362,15 +363,15 @@ ChowRing (Ring,Symbol):=(R,h)->(
     return A;
 );
 
-Segre=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
-Segre (Ideal,Ideal) :=opts-> (I1,I2) -> (
+segre=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+segre (Ideal,Ideal) :=opts-> (I1,I2) -> (
     --print "start segre wrapper";
-    A:=ChowRing(ring(I2));
-    return Segre(I1,I2,A,opts);
+    A:=makeChowRing(ring(I2));
+    return segre(I1,I2,A,opts);
 );
-Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
-    if not isMultiHomogeneous(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
-    if not isMultiHomogeneous(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
+segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
+    if not isMultiHom(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
+    if not isMultiHom(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
 
     R :=ring Y;
     n:=numgens(R)-length unique degrees R;
@@ -390,7 +391,7 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     projectiveDegreesList := projectiveDegrees(sX,sY);
     if opts.Verbose then <<"Projective degrees= "<<projectiveDegreesList<<endl;
 
-    --build Segre class recursivly from Proj Degs
+    --build segre class recursivly from Proj Degs
     segreClass:=0_A;
     RHS:=sum(0..dim sX,i->alpha^(dim sY-i)*chowClass(sY)) - sum(projectiveDegreesList);
     basisByCodim := partition(i -> sum(flatten exponents i), IA.basis);
@@ -405,6 +406,45 @@ Segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     if opts.Verbose then <<"s(X,Y)= "<<segreClass<<endl;
     return segreClass;
 );
+
+
+InterProd=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+InterProd (Ideal,Ideal,Ideal) :=opts-> (I1,I2,I3) -> (
+    A:=makeChowRing(ring(I2));
+    return InterProd(I1,I2,I3,A,opts);
+);
+InterProd (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
+    --figure out what ambient (product of) projective space/spaces we are in... need to add code for ambient toric
+    R:=ring Ix;
+    m:=degreeLength R;
+    uniDegs:=unique degrees R;
+    nList:=for d in uniDegs list (#positions(degrees(R),de->de==d)-1);
+    prodSpaceNs:=join(nList,nList);
+    S:= makeProjCoordRing(prodSpaceNs);
+    mapFirstFactor:= map(S,R,take(gens S,numgens(R)));
+    mapSecondFactor:= map(S,R,drop(gens S,numgens(R)));
+    X:= mapFirstFactor(Ix+Iy);
+    Y:= mapSecondFactor(Iv+Iy);
+    D:= minors(2,matrix{take(gens S,numgens(R)),drop(gens S,numgens(R))});
+    seg:=segre(D,X+Y,Verbose=>true);
+    Aprod:=ring seg;
+    temp:={};
+    pbSeg:=0_A;
+    for i from 0 to numgens(R)-1 do(
+	temp=select(terms seg, j->sum(degree(j))==2*sum(nList)-i);
+	--<<"nlist= "<<nList<<", tot "<<sum(nList)-i<<",terms "<<temp<<endl;
+	if temp!={} then(
+	    pbSeg=pbSeg+lift((flatten entries last coefficients first temp)_0,ZZ)*A_0^(numgens(R)-i-1);
+	    );
+	);
+    --need to fix the places we are computing things twice here
+    --Also need to think about how to do pull back to (P1xP2) from (P1xP2)x(P1xP2) etc.
+    expectDim:=sum(nList)-(codim(Ix)+codim(Iv)+codim(Iy));
+    <<"Seg pb= "<<pbSeg<<endl;
+    cY:=CSM(A,Iy)//chowClass(Iy,A);
+    IntPro:=cY*pbSeg;
+    return sum select(terms IntPro,j->sum(degree(j))==sum(nList)-expectDim);
+    );
 
 ----------------------------
 -- utility functions
@@ -431,12 +471,12 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R = MultiProjCoordRing({3,3})
+R = makeProjCoordRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
 X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
 A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^4,b^4)
-s = Segre(X,D,A,Verbose=>true)
+time s = segre(X,D,A,Verbose=>true)
 assert(s == 3*(a^3*b^2+a^2*b^3)-10*(a^3*b^3))
 ///
 
@@ -445,15 +485,15 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R=MultiProjCoordRing({6})
+R=makeProjCoordRing({6})
 x=gens(R)
 degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
-chowClass(J,CompMethod=>"prob")
+chowClass(J,CompMeth=>"prob")
 -- having this here breaks the test (!?).  Separating for now...
 -- A = ZZ[h]/(h^7)
--- assert(Segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
+-- assert(segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 assert(eXYmult(I,J,Verbose=>true)==1)
 ///
 
@@ -463,7 +503,7 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R = MultiProjCoordRing({3,3})
+R = makeProjCoordRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
 X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
@@ -480,14 +520,14 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R=MultiProjCoordRing({6})
+R=makeProjCoordRing({6})
 x=gens(R)
 degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
-chowClass(J,CompMethod=>"prob")
+chowClass(J,CompMeth=>"prob")
 A = ZZ[h]/(h^7)
-assert(Segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
+assert(segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 ///
 
 TEST ///
@@ -508,7 +548,7 @@ needsPackage "SegreClasses"
 *}
 -- Cx is a hyperplane section on a smooth quadric surface
 -- embedded in the diagonal of P3xP3
-R=MultiProjCoordRing({3,3})
+R=makeProjCoordRing({3,3})
 x=(gens(R))_{0..3}
 y=(gens(R))_{4..7}
 Qx = ideal (x#0*x#1 - x#2*x#3)
@@ -517,7 +557,7 @@ D = minors(2,matrix{x,y})
 I=ideal(Qx,Qy,D) --Q in the diagional
 Cx=ideal random({1,0},R)
 A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^4,b^4)
-s=Segre(Cx,I,A,Verbose=>true)
+s=segre(Cx,I,A,Verbose=>true)
 assert(s == 2*(a^3*b^2+a^2*b^3-a^3*b^3))
 ///
 
@@ -526,14 +566,14 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R=MultiProjCoordRing({2,1});
+R=makeProjCoordRing({2,1});
 x=(gens R)_{0..2};
 y=(gens R)_{3..4};
 I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
 B=ideal(y_0*I_1-y_1*I_0); ---blow up of this point...
 E=B+ideal (x_0,x_1);
 A = ZZ[a,b,Degrees=>{{1,0},{0,1}}]/(a^3,b^2)
-s=Segre(E,B,A,Verbose=>true)
+s=segre(E,B,A,Verbose=>true)
 assert(s == a^2 + a^2*b)
 ///
 
@@ -545,18 +585,18 @@ check "SegreClasses"
 restart
 needsPackage "SegreClasses"
 kk=ZZ/32749
-R = MultiProjCoordRing(kk,{2,3})
+R = makeProjCoordRing(kk,{2,3})
 x=(gens R)_{0..2}
 y=(gens R)_{3..6}
 I=ideal(x_0^2*x_1*y_1^2-x_0^3*y_0*y_3)
 J=ideal(x_1^2*x_0*y_3^2-x_0^3*y_2*y_0-x_0^3*y_0^2)
-time seg=Segre(I,J)
+time seg=segre(I,J)
 
 restart
 needsPackage "SegreClasses"
 kk=ZZ/32749
 R = kk[x,y,z,t]
-PP3xPP3 = MultiProjCoordRing(kk,{3,3})
+PP3xPP3 = makeProjCoordRing(kk,{3,3})
 m1 = map(PP3xPP3,R,take(gens PP3xPP3,4))
 m2 = map(PP3xPP3,R,drop(gens PP3xPP3,4))
 f = ideal "x(x2-2xy+zt) + y(x2-3yt+z2+3t2-3tz+xy)"
@@ -566,4 +606,12 @@ X = m1(f+g)
 Y = m2(h+g)
 D = minors(2,matrix{take(gens PP3xPP3,4),drop(gens PP3xPP3,4)})
 -- this example takes 30secs or so... (07.01.18)
-time Segre(D,X+Y,HomMethod=>2)
+time segre(D,X+Y,HomMethod=>2)
+
+restart
+needsPackage "SegreClasses"
+R = makeProjCoordRing({3})
+I1=ideal random(1,R)
+I2=ideal random(1,R)
+I3=ideal (R_0^2-34*R_1*R_2+3*R_3^2)
+InterProd(I1,I2,I3)
