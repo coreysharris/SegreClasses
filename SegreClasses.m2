@@ -31,7 +31,7 @@ export {
    "CompMeth",
    "eXYmult",
    "chowClass",
-   "InterProd"
+   "intersectionProduct"
 }
 
 hasAttribute = value Core#"private dictionary"#"hasAttribute"
@@ -408,12 +408,12 @@ segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 );
 
 
-InterProd=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
-InterProd (Ideal,Ideal,Ideal) :=opts-> (I1,I2,I3) -> (
+intersectionProduct=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+intersectionProduct (Ideal,Ideal,Ideal) :=opts-> (I1,I2,I3) -> (
     A:=makeChowRing(ring(I2));
-    return InterProd(I1,I2,I3,A,opts);
+    return intersectionProduct(I1,I2,I3,A,opts);
 );
-InterProd (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
+intersectionProduct (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
     --figure out what ambient (product of) projective space/spaces we are in... need to add code for ambient toric
     R:=ring Ix;
     m:=degreeLength R;
@@ -426,7 +426,7 @@ InterProd (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
     X:= mapFirstFactor(Ix+Iy);
     Y:= mapSecondFactor(Iv+Iy);
     D:= minors(2,matrix{take(gens S,numgens(R)),drop(gens S,numgens(R))});
-    seg:=segre(D,X+Y,Verbose=>true);
+    seg:=segre(D,X+Y,opts);
     Aprod:=ring seg;
     temp:={};
     pbSeg:=0_A;
@@ -439,16 +439,23 @@ InterProd (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
 	);
     --need to fix the places we are computing things twice here
     --Also need to think about how to do pull back to (P1xP2) from (P1xP2)x(P1xP2) etc.
-    expectDim:=sum(nList)-(codim(Ix)+codim(Iv)+codim(Iy));
-    <<"Seg pb= "<<pbSeg<<endl;
+    dimY := sum(nList) - codim(Iy);
+    expectDim:= dimY - codim(Ix,Iy) - codim(Iv,Iy);
+    if opts.Verbose then <<"Segre pullback to diagonal = "<<pbSeg<<endl;
     cY:=CSM(A,Iy)//chowClass(Iy,A);
-    IntPro:=cY*pbSeg;
-    return sum select(terms IntPro,j->sum(degree(j))==sum(nList)-expectDim);
+    if opts.Verbose then <<"Chern class = "<< cY <<endl;
+    intProduct:=cY*pbSeg;
+    return sum select(terms intProduct,j->sum(degree(j))==sum(nList)-expectDim);
     );
 
 ----------------------------
 -- utility functions
 ----------------------------
+
+codim (Ideal,Ideal) := {} >> opts -> (X,Y) -> (
+    -- returns codimension of X in Y
+    return codim(X+Y) - codim(Y)
+)
 
 OneAti=(dl,i)->(
     vec:={};
@@ -614,4 +621,18 @@ R = makeProjCoordRing({3})
 I1=ideal random(1,R)
 I2=ideal random(1,R)
 I3=ideal (R_0^2-34*R_1*R_2+3*R_3^2)
-InterProd(I1,I2,I3)
+intersectionProduct(I1,I2,I3)
+
+restart
+needsPackage "SegreClasses"
+-- needsPackage "CharacteristicClasses"
+-- PP3 = QQ[x,y,z,w]
+R = makeProjCoordRing(QQ,{3})
+(x,y,z,w) = toSequence gens R
+Q = ideal "xy-zw"
+L1 = ideal "x,w"
+L2 = ideal "y,w"
+-- CSM(Q)
+intersectionProduct(L1,L2,Q,Verbose=>true)
+intersectionProduct(L1,L1,Q,Verbose=>true)
+
