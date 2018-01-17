@@ -16,23 +16,19 @@ newPackage( "SegreClasses",
 );
 
 export {
-   "makeChowRing",
-   "chowRing",
-   "makeProjCoordRing",
+   "chowClass",
+   "intersectionProduct",
    "isMultiHom",
-   "segre",
+   "makeChowRing",
+   "makeProductRing",
+   "multiplicity",
    "projectiveDegree",
    "projectiveDegrees",
-   "makeMultiHom",
-   "HomMethod",
-   "ProjDegMethod",
-   "SloppinessLevel",
-   "Sparsity",
-   "CompMeth",
-   "eXYmult",
-   "chowClass",
-   "intersectionProduct"
+   "segre",
+   "Sparsity"
 }
+
+chowRing = getSymbol "chowRing";
 
 hasAttribute = value Core#"private dictionary"#"hasAttribute"
 getAttribute = value Core#"private dictionary"#"getAttribute"
@@ -107,7 +103,7 @@ dim Scheme := X -> (
     return X.dim
 )
 
-projectiveDegree = method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+projectiveDegree = method(TypicalValue => RingElement,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 projectiveDegree (Ideal,Ideal,RingElement) :=opts-> (IX,IY,w) -> (
     Y := scheme(IY);
     X := scheme(IX+IY);
@@ -139,9 +135,9 @@ projectiveDegree(Scheme,Scheme,RingElement) := opts -> (sX,sY,w) -> (
     LA := sum(irrelevantIdeals, p -> sub(ideal(1-sum(numgens(p),i->random(kk)*p_i)),R));
 
     pd := 0;
-    if opts.ProjDegMethod=="Sat" then (
+    if opts.Strategy=="Sat" then (
         pd = degree saturate(Y+Ls+G+LA,X)
-    ) else if(opts.ProjDegMethod=="NAG") then (
+    ) else if(opts.Strategy=="NAG") then (
         Sys:=flatten entries gens(Y+Ls+G+LA);
         sols:=solveSystem Sys;
         Fsys:=flatten entries gens (X+Y);
@@ -165,7 +161,7 @@ projectiveDegree(Scheme,Scheme,RingElement) := opts -> (sX,sY,w) -> (
     return pd;
 );
 
-projectiveDegrees = method(TypicalValue => List,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+projectiveDegrees = method(TypicalValue => List,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 projectiveDegrees(Ideal,Ideal) := opts -> (I,J) -> (
     R :=ring J;
     n:=numgens(R)-length unique degrees R;
@@ -189,12 +185,12 @@ projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
     return projectiveDegreesList
 )
 
-eXYmult=method(TypicalValue=>ZZ,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
-eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
-    if opts.Verbose then print "eXYmult(I,J) computes e_XY where X is the top equidimensional component of V(I) and Y=V(J) (Y is assumed to be irreducible)";
+multiplicity=method(TypicalValue=>ZZ,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
+multiplicity (Ideal,Ideal) := opts->(I1,I2) -> (
+    if opts.Verbose then print "multiplicity(I,J) computes e_XY where X is the top equidimensional component of V(I) and Y=V(J) (Y is assumed to be irreducible)";
     Iinfo:=new MutableHashTable;
     A:=makeChowRing(ring(I2));
-    clX:=chowClass(I1+I2,A,CompMeth=>"multidegree");
+    clX:=chowClass(I1+I2,A,Strategy=>"multidegree");
     seg:= segre(I1,I2,A,opts);
     mons:=flatten entries monomials clX;
     segMons:=sum(for m in mons list m*seg_(m));
@@ -202,14 +198,14 @@ eXYmult (Ideal,Ideal) := opts->(I1,I2) -> (
     return lift(segMons//clX,ZZ);
 );
 
-chowClass=method(TypicalValue=>ZZ,Options => {CompMeth=>"multidegree"});
+chowClass=method(TypicalValue=>ZZ,Options => {Strategy=>"multidegree"});
 chowClass Scheme := opts -> X -> (
     -- if not X.?chowClass then X.chowClass = chowClass(ideal X,ring(X.chowRing));
     if X.?chowClass then return X.chowClass;
     R := ring X;
     IA := X.chowRing;
     classI:=0;
-    if opts.CompMeth=="multidegree" then (
+    if opts.Strategy=="multidegree" then (
         md:=multidegree (ideal X);
         classI=sub(md,matrix{gens ring IA});
     ) else (
@@ -302,21 +298,21 @@ makeMultiHom (Ideal,Scheme):=(eqsX,Y)->(
     --return ideal homGens;
 );
 
-makeProjCoordRing=method(TypicalValue=>Ring);
-makeProjCoordRing (Symbol,List):=(x,l)->(
+makeProductRing=method(TypicalValue=>Ring);
+makeProductRing (Symbol,List):=(x,l)->(
     kk:=ZZ/32749;
-    return makeProjCoordRing(kk,x,l);
+    return makeProductRing(kk,x,l);
 );
-makeProjCoordRing (Ring,List):=(kk,l)->(
+makeProductRing (Ring,List):=(kk,l)->(
     x:=getSymbol "x";
-    return makeProjCoordRing(kk,x,l);
+    return makeProductRing(kk,x,l);
 );
-makeProjCoordRing (List):=(l)->(
+makeProductRing (List):=(l)->(
     x:=getSymbol "x";
     kk:=ZZ/32749;
-    return makeProjCoordRing(kk,x,l);
+    return makeProductRing(kk,x,l);
 );
-makeProjCoordRing (Ring, Symbol,List):=(kk,x,l)->(
+makeProductRing (Ring, Symbol,List):=(kk,x,l)->(
     if not isField(kk) then (
         <<"The coefficent ring must be a field, using the default field kk=ZZ/32749"<<endl;
         kk=ZZ/32749;
@@ -363,7 +359,7 @@ makeChowRing (Ring,Symbol):=(R,h)->(
     return A;
 );
 
-segre=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+segre=method(TypicalValue => RingElement,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 segre (Ideal,Ideal) :=opts-> (I1,I2) -> (
     --print "start segre wrapper";
     A:=makeChowRing(ring(I2));
@@ -380,7 +376,7 @@ segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
     sX := scheme(X+Y,IA);
     sX.equations = X;
 
-    if opts.ProjDegMethod=="NAG" and char(coefficientRing R)!=0 then (print "Use QQ for NAG"; return 0;);
+    if opts.Strategy=="NAG" and char(coefficientRing R)!=0 then (print "Use QQ for NAG"; return 0;);
 
     --find the max multidegree, write it as a class alpha
     maxDegs := for d in transpose degrees (X+Y) list max d;
@@ -408,7 +404,7 @@ segre (Ideal,Ideal,QuotientRing) :=opts->(X,Y,A) -> (
 );
 
 
-intersectionProduct=method(TypicalValue => RingElement,Options => {HomMethod=>2,ProjDegMethod=>"AdjT",SloppinessLevel=>1,Sparsity=>4,Verbose=>false});
+intersectionProduct=method(TypicalValue => RingElement,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 intersectionProduct (Ideal,Ideal,Ideal) :=opts-> (I1,I2,I3) -> (
     A:=makeChowRing(ring(I2));
     return intersectionProduct(I1,I2,I3,A,opts);
@@ -420,7 +416,7 @@ intersectionProduct (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
     uniDegs:=unique degrees R;
     nList:=for d in uniDegs list (#positions(degrees(R),de->de==d)-1);
     prodSpaceNs:=join(nList,nList);
-    S:= makeProjCoordRing(prodSpaceNs);
+    S:= makeProductRing(prodSpaceNs);
     mapFirstFactor:= map(S,R,take(gens S,numgens(R)));
     mapSecondFactor:= map(S,R,drop(gens S,numgens(R)));
     X:= mapFirstFactor(Ix+Iy);
@@ -478,7 +474,7 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R = makeProjCoordRing({3,3})
+R = makeProductRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
 X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
@@ -492,16 +488,16 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R=makeProjCoordRing({6})
+R=makeProductRing({6})
 x=gens(R)
 degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
-chowClass(J,CompMeth=>"prob")
+chowClass(J,Strategy=>"prob")
 -- having this here breaks the test (!?).  Separating for now...
 -- A = ZZ[h]/(h^7)
 -- assert(segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
-assert(eXYmult(I,J,Verbose=>true)==1)
+assert(multiplicity(I,J,Verbose=>true)==1)
 ///
 
 TEST ///
@@ -510,7 +506,7 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R = makeProjCoordRing({3,3})
+R = makeProductRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
 X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
@@ -527,12 +523,12 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R=makeProjCoordRing({6})
+R=makeProductRing({6})
 x=gens(R)
 degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
-chowClass(J,CompMeth=>"prob")
+chowClass(J,Strategy=>"prob")
 A = ZZ[h]/(h^7)
 assert(segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 ///
@@ -545,7 +541,7 @@ needsPackage "SegreClasses"
 R = ZZ/32003[x,y,z,w];
 I = ideal(-z^2+y*w,-y*z+x*w)
 J = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
-assert(eXYmult(I,J)==2)
+assert(multiplicity(I,J)==2)
 ///
 
 TEST ///
@@ -555,7 +551,7 @@ needsPackage "SegreClasses"
 *}
 -- Cx is a hyperplane section on a smooth quadric surface
 -- embedded in the diagonal of P3xP3
-R=makeProjCoordRing({3,3})
+R=makeProductRing({3,3})
 x=(gens(R))_{0..3}
 y=(gens(R))_{4..7}
 Qx = ideal (x#0*x#1 - x#2*x#3)
@@ -573,7 +569,7 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-R=makeProjCoordRing({2,1});
+R=makeProductRing({2,1});
 x=(gens R)_{0..2};
 y=(gens R)_{3..4};
 I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
@@ -592,7 +588,7 @@ check "SegreClasses"
 restart
 needsPackage "SegreClasses"
 kk=ZZ/32749
-R = makeProjCoordRing(kk,{2,3})
+R = makeProductRing(kk,{2,3})
 x=(gens R)_{0..2}
 y=(gens R)_{3..6}
 I=ideal(x_0^2*x_1*y_1^2-x_0^3*y_0*y_3)
@@ -603,7 +599,7 @@ restart
 needsPackage "SegreClasses"
 kk=ZZ/32749
 R = kk[x,y,z,t]
-PP3xPP3 = makeProjCoordRing(kk,{3,3})
+PP3xPP3 = makeProductRing(kk,{3,3})
 m1 = map(PP3xPP3,R,take(gens PP3xPP3,4))
 m2 = map(PP3xPP3,R,drop(gens PP3xPP3,4))
 f = ideal "x(x2-2xy+zt) + y(x2-3yt+z2+3t2-3tz+xy)"
@@ -613,11 +609,11 @@ X = m1(f+g)
 Y = m2(h+g)
 D = minors(2,matrix{take(gens PP3xPP3,4),drop(gens PP3xPP3,4)})
 -- this example takes 30secs or so... (07.01.18)
-time segre(D,X+Y,HomMethod=>2)
+time segre(D,X+Y)
 
 restart
 needsPackage "SegreClasses"
-R = makeProjCoordRing({3})
+R = makeProductRing({3})
 I1=ideal random(1,R)
 I2=ideal random(1,R)
 I3=ideal (R_0^2-34*R_1*R_2+3*R_3^2)
@@ -625,14 +621,11 @@ intersectionProduct(I1,I2,I3)
 
 restart
 needsPackage "SegreClasses"
--- needsPackage "CharacteristicClasses"
--- PP3 = QQ[x,y,z,w]
-R = makeProjCoordRing(QQ,{3})
+R = makeProductRing(QQ,{3})
 (x,y,z,w) = toSequence gens R
 Q = ideal "xy-zw"
 L1 = ideal "x,w"
 L2 = ideal "y,w"
--- CSM(Q)
 intersectionProduct(L1,L2,Q,Verbose=>true)
 intersectionProduct(L1,L1,Q,Verbose=>true)
 
