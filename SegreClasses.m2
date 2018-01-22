@@ -412,41 +412,56 @@ intersectionProduct (Ideal,Ideal,Ideal) :=opts-> (I1,I2,I3) -> (
 intersectionProduct (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
     --figure out what ambient (product of) projective space/spaces we are in... need to add code for ambient toric
     R:=ring Ix;
-    m:=degreeLength R;
-    uniDegs:=unique degrees R;
-    nList:=for d in uniDegs list (#positions(degrees(R),de->de==d)-1);
-    prodSpaceNs:=join(nList,nList);
+    numFactors := degreeLength R;
+    factorDims := factorDimensions(R);
+    prodSpaceNs:=join(factorDims,factorDims);
     S:= makeProductRing(prodSpaceNs);
     mapFirstFactor:= map(S,R,take(gens S,numgens(R)));
     mapSecondFactor:= map(S,R,drop(gens S,numgens(R)));
     X:= mapFirstFactor(Ix+Iy);
     Y:= mapSecondFactor(Iv+Iy);
-    D:= minors(2,matrix{take(gens S,numgens(R)),drop(gens S,numgens(R))});
+
+    -- split the vars by factor and take 2x2 minors of the sets of matrices
+    factorVars := for d in (unique degrees R) list (partition(degree, gens R))#d;
+    D := sum (for l in factorVars list minors(2, matrix{mapFirstFactor \ l,mapSecondFactor \ l}));
+
     seg:=segre(D,X+Y,opts);
     Aprod:=ring seg;
     temp:={};
-    pbSeg:=0_A;
-    for i from 0 to numgens(R)-1 do(
-	temp=select(terms seg, j->sum(degree(j))==2*sum(nList)-i);
-	--<<"nlist= "<<nList<<", tot "<<sum(nList)-i<<",terms "<<temp<<endl;
-	if temp!={} then(
-	    pbSeg=pbSeg+lift((flatten entries last coefficients first temp)_0,ZZ)*A_0^(numgens(R)-i-1);
-	    );
-	);
-    --need to fix the places we are computing things twice here
-    --Also need to think about how to do pull back to (P1xP2) from (P1xP2)x(P1xP2) etc.
-    dimY := sum(nList) - codim(Iy);
+    termDegrees := degree \ terms seg;
+    segrePullbackCoeffs := new HashTable from (
+        for t in terms seg list (
+            {apply(take(degree t, numFactors), drop(degree t, numFactors), min), (last coefficients t)_(0,0)}
+        )
+    );
+    segrePullbackTerms := for kvpair in pairs segrePullbackCoeffs list (
+        (degList,coeff) := kvpair;
+        p := product(apply(gens A, degList, (v,d)->v^d));
+        print(p);
+        lift(coeff,ZZ) * p
+    );
+    segrePullback := sum segrePullbackTerms;
+
+    dimY := sum(factorDims) - codim(Iy);
     expectDim:= dimY - codim(Ix,Iy) - codim(Iv,Iy);
-    if opts.Verbose then <<"Segre pullback to diagonal = "<<pbSeg<<endl;
+    if opts.Verbose then <<"Segre pullback to diagonal = "<<segrePullback<<endl;
     cY:=CSM(A,Iy)//chowClass(Iy,A);
     if opts.Verbose then <<"Chern class = "<< cY <<endl;
-    intProduct:=cY*pbSeg;
-    return sum select(terms intProduct,j->sum(degree(j))==sum(nList)-expectDim);
-    );
+    intProduct:=cY*segrePullback;
+    return sum select(terms intProduct,j->sum(degree(j))==sum(factorDims)-expectDim);
+);
 
 ----------------------------
 -- utility functions
 ----------------------------
+
+factorDimensions = R -> (
+    -- if R = makeProdRing({a,b,c,...})
+    -- then factorDimensions(R) = {a,b,c,...}
+    return for deg in unique degrees R list (
+        (tally degrees R)#deg - 1
+    )
+)
 
 codim (Ideal,Ideal) := {} >> opts -> (X,Y) -> (
     -- returns codimension of X in Y
@@ -629,3 +644,12 @@ L2 = ideal "y,w"
 intersectionProduct(L1,L2,Q,Verbose=>true)
 intersectionProduct(L1,L1,Q,Verbose=>true)
 
+restart
+needsPackage "SegreClasses"
+R=makeProductRing({2,1});
+x=(gens R)_{0..2}
+y=(gens R)_{3..4}
+I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
+B=ideal(y_0*x_1-y_1*x_0); ---blow up of this point...
+E=B+ideal (x_0,x_1);
+intersectionProduct(E,E,B,Verbose=>true)
