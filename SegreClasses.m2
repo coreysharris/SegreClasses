@@ -25,6 +25,7 @@ export {
    "projectiveDegree",
    "projectiveDegrees",
    "containedInSingularLocus",
+   "isVarietyContained",
    "segre",
    "Sparsity"
 }
@@ -114,6 +115,19 @@ containedInSingularLocus (Ideal,Ideal) :=opts-> (IX,IY) -> (
     eXY:=multiplicity(IX,IY);
     return eXY>1;
 );
+isVarietyContained = method(TypicalValue => Boolean,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
+isVarietyContained (Ideal,Ideal) :=opts-> (IX,IY) -> (
+    R:=ring IY;
+    kk:=coefficientRing(R);
+    sY:=scheme IY;
+    Y:=makeMultiHom (IY,ideal 0_R);
+    X:=makeMultiHom (IX,Y);
+    Theta:=sum((numgens X),j->random(kk)*X_j);
+    F:=for i from 0 to codim(sY) list sum((numgens Y),j->random(kk)*Y_j);
+    Z:=sub(ideal(Theta),R)*ideal(F_0)*ideal(F_{1..#F-1});
+    return containedInSingularLocus(IX,Z);
+);
+
 projectiveDegree = method(TypicalValue => RingElement,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 projectiveDegree (Ideal,Ideal,RingElement) :=opts-> (IX,IY,w) -> (
     Y := scheme(IY);
@@ -139,6 +153,7 @@ projectiveDegree(Scheme,Scheme,RingElement) := opts -> (sX,sY,w) -> (
             Ls=Ls+sum(wDims_i,j->ideal(random(OneAti(degreeLength R,i),R)));
         );
     );
+    --TODO: Cache makeMultiHom(X,sY), maybe in sX or sY?
     Wg:=flatten entries gens (makeMultiHom(X,sY)+Ls);
     G:=ideal(for j from 1 to dim(sY)-wTotalDim list sum(Wg,g->random(kk)*g));
     irrelevantIdealsHash := partition(degree, gens R);
@@ -197,6 +212,7 @@ projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
 )
 
 multiplicity=method(TypicalValue=>ZZ,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
+--TODO Add multiplicity (Scheme,Scheme), make this a wrapper
 multiplicity (Ideal,Ideal) := opts->(I1,I2) -> (
     if opts.Verbose then print "multiplicity(I,J) computes e_XY where X is the top equidimensional component of V(I) and Y=V(J) (Y is assumed to be irreducible)";
     R :=ring I2;
@@ -697,9 +713,21 @@ needsPackage "SegreClasses"
 n=6
 kk=ZZ/32749
 R=kk[x_0..x_n]
+scheme ideal(0_R)
 m=matrix{for i from 0 to n-3 list x_i*x_(i+1),for i from 0 to n-3 list x_(i+3)*x_(i+1),for i from 0 to n-3 list x_5*x_(i+2),for i from 0 to n-3 list x_6*x_(i+3)}
 C=minors(2,m)
 P=ideal(x_0,x_1,x_3,x_5,x_6)
 time multiplicity(P,C)
 time containedInSingularLocus(P,C)
 
+restart
+needsPackage "SegreClasses"
+n=6
+kk=ZZ/32749
+R=kk[x_0..x_n]
+C=ideal(x_0^2+x_1^2,x_3*x_2+x_1*x_3-21*x_4^2,x_3*x_5+x_2*x_3-21*x_5^2)
+P=decompose C
+isSubset(C,P_0)
+isSubset(C,P_1)
+time isVarietyContained(P_0,C)
+time isVarietyContained(P_1,C)
