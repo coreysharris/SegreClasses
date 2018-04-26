@@ -332,7 +332,7 @@ makeProductRing (Ring, Symbol,List):=(kk,x,l)->(
 
 makeChowRing=method(TypicalValue=>QuotientRing);
 makeChowRing (Ring):=(R)->(
-    h := getSymbol "h";
+    h := getSymbol "H";
     return makeChowRing(R,h);
 );
 makeChowRing (Ring,Symbol):=(R,h)->(
@@ -653,3 +653,15 @@ I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
 B=ideal(y_0*x_1-y_1*x_0); ---blow up of this point...
 E=B+ideal (x_0,x_1);
 intersectionProduct(E,E,B,Verbose=>true)
+
+restart
+needsPackage "SegreClasses"
+R = makeProductRing({3,3})
+C = makeChowRing(R)
+x = gens(R)
+D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
+X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
+pds = projectiveDegrees(X,D,Verbose=>true)
+l = gens C
+p = l#0^3 * l#1^3
+projectiveDegree(X,D,p)
