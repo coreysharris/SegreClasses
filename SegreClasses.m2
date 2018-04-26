@@ -1,9 +1,9 @@
 newPackage( "SegreClasses",
-    Version =>"0.3",
-    Date => "Jan 15, 2018",
+    Version =>"0.51",
+    Date => "April 26, 2018",
     Authors => {
         {Name => "Martin Helmer",
-         Email => "martin.helmer@berkeley.edu",
+         Email => "m.helmer@math.ku.dk",
          HomePage => "http://martin-helmer.com"},
         {Name => "Corey Harris",
          Email => "Corey.Harris@mis.mpg.de",
@@ -24,6 +24,7 @@ export {
    "multiplicity",
    "projectiveDegree",
    "projectiveDegrees",
+   "containedInSingularLocus",
    "segre",
    "Sparsity"
 }
@@ -102,7 +103,17 @@ dim Scheme := X -> (
     );
     return X.dim
 )
-
+saturate Scheme :=opts ->  X -> (
+    if not X.?saturate then (
+        X.saturate = saturate(ideal X,product (values partition(degree, gens(ring(X))) / ideal));
+    );
+    return X.saturate;
+)
+containedInSingularLocus = method(TypicalValue => Boolean,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
+containedInSingularLocus (Ideal,Ideal) :=opts-> (IX,IY) -> (
+    eXY:=multiplicity(IX,IY);
+    return eXY>1;
+);
 projectiveDegree = method(TypicalValue => RingElement,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 projectiveDegree (Ideal,Ideal,RingElement) :=opts-> (IX,IY,w) -> (
     Y := scheme(IY);
@@ -112,7 +123,7 @@ projectiveDegree (Ideal,Ideal,RingElement) :=opts-> (IX,IY,w) -> (
     X.chowRing = Y.chowRing;
     X.equations = IX;
 
-    return projectiveDegree(X,Y,w)
+    return projectiveDegree(X,Y,w);
 );
 projectiveDegree(Scheme,Scheme,RingElement) := opts -> (sX,sY,w) -> (
     A := sX.chowRing;
@@ -188,14 +199,23 @@ projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
 multiplicity=method(TypicalValue=>ZZ,Options => {Strategy=>"AdjT",Verify=>1,Sparsity=>4,Verbose=>false});
 multiplicity (Ideal,Ideal) := opts->(I1,I2) -> (
     if opts.Verbose then print "multiplicity(I,J) computes e_XY where X is the top equidimensional component of V(I) and Y=V(J) (Y is assumed to be irreducible)";
-    Iinfo:=new MutableHashTable;
-    A:=makeChowRing(ring(I2));
+    R :=ring I2;
+    A:=makeChowRing(R);
+    n:=numgens(R)-length unique degrees R;
+    IA := intersectionRing(A,n);
+    sY := scheme(I2,IA);
+    sX := scheme(I1+I2,IA);
     clX:=chowClass(I1+I2,A,Strategy=>"multidegree");
-    seg:= segre(I1,I2,A,opts);
-    mons:=flatten entries monomials clX;
-    segMons:=sum(for m in mons list m*seg_(m));
-    if opts.Verbose then <<"[X]= "<<clX<<" these monomials in segre class= "<<segMons<<endl;
-    return lift(segMons//clX,ZZ);
+    ha:=first flatten entries monomials clX;
+    ba:=clX_(ha);
+    ga:=projectiveDegree(sX,sY,ha);
+            --find the max multidegree, write it as a class alpha
+    maxDegs := for d in transpose degrees (I1+I2) list max d;
+    alpha := sum(length IA.codim1Basis,i->(basis(OneAti(degreeLength R,i),A))_0_0*maxDegs_i);
+    Lambda:=alpha^(dim(sY)-dim(sX))*chowClass(I2,A);
+    ca:=Lambda_(ha);
+    eXY:=(ca-ga)/ba;
+    return eXY;
 );
 
 chowClass=method(TypicalValue=>ZZ,Options => {Strategy=>"multidegree"});
@@ -206,9 +226,10 @@ chowClass Scheme := opts -> X -> (
     IA := X.chowRing;
     classI:=0;
     if opts.Strategy=="multidegree" then (
-        md:=multidegree (ideal X);
+        md:=multidegree saturate X;
         classI=sub(md,matrix{gens ring IA});
-    ) else (
+	) 
+    else(
         irrelevantIdealsHash := partition(degree, gens R);
         irrelevantIdeals := values irrelevantIdealsHash / ideal;
         ZeroDimGB:=0;
@@ -223,19 +244,24 @@ chowClass Scheme := opts -> X -> (
                     Ls=Ls+sum(wDims_i,j->ideal(random(OneAti(degreeLength R,i),R)));
                 );
             );
-            ZeroDimGB=ideal groebnerBasis(ideal(gb X)+Ls+LA, Strategy=>"F4");
+            ZeroDimGB=ideal groebnerBasis(saturate(X)+Ls+LA, Strategy=>"F4");
             classI=classI+(numColumns basis(cokernel leadTerm ZeroDimGB))*w;
         );
     );
     X.chowClass = classI;
-    return X.chowClass
+    return X.chowClass;
 );
 chowClass (Ideal,Ring) := opts -> (I,A) -> (
-    return sub(multidegree I, matrix{ gens A })
+    R:=ring I;
+    n:=numgens(R)-length unique degrees R;
+    IA := intersectionRing(A,n);
+    return chowClass(scheme(I,IA),opts);
+    --return sub(multidegree I, matrix{ gens A })
 )
 chowClass (Ideal) := opts -> (I) -> (
-    A:=makeChowRing(ring I);
-    return sub(multidegree I, matrix{ gens A });
+    return chowClass(scheme(I),opts);
+    --A:=makeChowRing(ring I);
+    --return sub(multidegree I, matrix{ gens A });
 );
 
 isMultiHom=method(TypicalValue=>Boolean);
@@ -332,7 +358,7 @@ makeProductRing (Ring, Symbol,List):=(kk,x,l)->(
 
 makeChowRing=method(TypicalValue=>QuotientRing);
 makeChowRing (Ring):=(R)->(
-    h := getSymbol "H";
+    h := getSymbol "h";
     return makeChowRing(R,h);
 );
 makeChowRing (Ring,Symbol):=(R,h)->(
@@ -665,3 +691,15 @@ pds = projectiveDegrees(X,D,Verbose=>true)
 l = gens C
 p = l#0^3 * l#1^3
 projectiveDegree(X,D,p)
+
+restart
+needsPackage "SegreClasses"
+n=6
+kk=ZZ/32749
+R=kk[x_0..x_n]
+m=matrix{for i from 0 to n-3 list x_i*x_(i+1),for i from 0 to n-3 list x_(i+3)*x_(i+1),for i from 0 to n-3 list x_5*x_(i+2),for i from 0 to n-3 list x_6*x_(i+3)}
+C=minors(2,m)
+P=ideal(x_0,x_1,x_3,x_5,x_6)
+time multiplicity(P,C)
+time containedInSingularLocus(P,C)
+
