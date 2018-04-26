@@ -358,7 +358,7 @@ makeProductRing (Ring, Symbol,List):=(kk,x,l)->(
 
 makeChowRing=method(TypicalValue=>QuotientRing);
 makeChowRing (Ring):=(R)->(
-    h := getSymbol "h";
+    h := getSymbol "H";
     return makeChowRing(R,h);
 );
 makeChowRing (Ring,Symbol):=(R,h)->(
