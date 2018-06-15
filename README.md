@@ -1,6 +1,6 @@
 # SegreClasses
 
-This Macaulay2 package provides four main methods: 'segre`, `projectiveDegrees', `containedInSingularLocus', `isComponentContained' and, 'intersectionProduct' .  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
+This Macaulay2 package provides four main methods: 'segre', `projectiveDegrees', `containedInSingularLocus', `isComponentContained' and, 'intersectionProduct' .  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
 
 ## First example
 
@@ -43,18 +43,26 @@ Below is an example where we verify that one variety contains another in a produ
     x=(gens R)_{0..2}
     y=(gens R)_{3..5}
     z=(gens R)_{6..8}
-The irrelevant ideal of the ambient space is:    
+    
+The irrelevant ideal of the ambient space is:  
+
     B=ideal(x)*ideal(y)*ideal(z)
+
 We now define two multi-graded ideals X, Y    
+
     m1=matrix{{x_0,x_1,5*x_2},y_{0..2},{2*z_0,7*z_1,25*z_2}};
     m2=matrix{{9*z_0,4*z_1,3*z_2},y_{0..2},x_{0..2}};
     W=minors(3,m1)+minors(3,m2);
     f=random({1,1,1},R);
     Y=ideal (z_0*W_0-z_1*W_1)+ideal(f)
     X=((W)*ideal(y)+ideal(f))
+    
 Now we check that the variety X is contained in the variety Y:
+
     time isComponentContained(X,Y)
+
 To use classical methods we would have to saturate out the irrevant ideals and then test ideal containment as follows:   
+
     time isSubset(saturate(Y,B),saturate(X,B))
 
 
