@@ -11,7 +11,7 @@ This Macaulay2 package provides six main methods:
 
 Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
 
-## Computing a Segre class:
+## Making a multi-projective coordinate ring:
 
 Let's compute the Segre class of the exceptional divisor for the blowup of a point in the plane. In its most basic form, the segre method accepts a pair of ideals (I, J) in a multigraded ring with I containing J.  Then `segre(I,J)` returns a class in the Chow group of the ambient space.  
 
@@ -24,6 +24,10 @@ The method `makeProductRing` accepts a list of integers and makes the correspond
     R = makeProductRing({2,1});
     x = (gens R)_{0..2}; -- x_0, x_1, x_2
     y = (gens R)_{3..4}; -- y_0, y_1
+
+## Computing a Segre class:
+
+Now construct some ideals:
 
     I = ideal (x_0,x_1);         -- origin in PP^2
     B = ideal (y_0*x_1-y_1*x_0); -- blow up of this point
