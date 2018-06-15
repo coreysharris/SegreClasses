@@ -2,7 +2,7 @@
 
 This Macaulay2 package provides four main methods: 'segre', `projectiveDegrees', `containedInSingularLocus', `isComponentContained' and, 'intersectionProduct' .  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
 
-## First example
+## Computing a Segre class:
 
 Let's compute the Segre class of the exceptional divisor for the blowup of a point in the plane. In its most basic form, the segre method accepts a pair of ideals (I, J) in a multigraded ring with I containing J.  Then `segre(I,J)` returns a class in the Chow group of the ambient space.  
 
@@ -35,7 +35,7 @@ If we prefer, we can specify our own Chow ring:
     
            2     2
     o10 = a b + a
-## Containment of the irreducible components of one scheme in another
+## Containment of the irreducible components of one scheme in another:
 
 Below is an example where we verify that one variety contains another in a product of projective spaces PP^2 x PP^2 x PP^2:
 
