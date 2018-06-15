@@ -1,6 +1,6 @@
 # SegreClasses
 
-This Macaulay2 package provides six main methods: 'segre', 'multiplicty', `containedInSingularLocus', `isComponentContained', `projectiveDegrees', and, 'intersectionProduct'.  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
+This Macaulay2 package provides six main methods: `segre', `multiplicty', `containedInSingularLocus', `isComponentContained', `projectiveDegrees', and, `intersectionProduct'.  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
 
 ## Computing a Segre class:
 
