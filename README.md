@@ -37,7 +37,7 @@ If we prefer, we can specify our own Chow ring:
     o10 = a b + a
 ## Containment of the irreducible components of one scheme in another
 
-Below is an example where we verify that one variety contains another in a product of projective spaces 
+Below is an example where we verify that one variety contains another in a product of projective spaces PP^2 x PP^2 x PP^2:
 
     R = makeProductRing({2,2,2})
     x=(gens R)_{0..2}
@@ -65,6 +65,20 @@ To use classical methods we would have to saturate out the irrevant ideals and t
 
     time isSubset(saturate(Y,B),saturate(X,B))
 
+## Containment in the Singular Locus of a Variety:
+
+There is also a method to test containment of a vareity in the singular locus of another, without computing the defining equations of the singular locus:
+
+    n=6
+    R = makeProductRing({n})
+    x=gens(R)
+    m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
+    C=ideal mingens(minors(3,m));
+    P=ideal(x_0,x_4,x_3,x_2,x_1)
+    
+We now confirm that V(P) is contained in the singular locus of V(C)    
+    
+    containedInSingularLocus(P,C)
 
 ## Intersection products
 
