@@ -1,6 +1,6 @@
 # SegreClasses
 
-This Macaulay2 package provides four main methods: 'segre', `projectiveDegrees', `containedInSingularLocus', `isComponentContained' and, 'intersectionProduct' .  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
+This Macaulay2 package provides six main methods: 'segre', 'multiplicty' ,`projectiveDegrees', `containedInSingularLocus', `isComponentContained' and, 'intersectionProduct' .  Currently the ambient space should be a product of finitely many projective spaces.  A future version of this package will allow for computations in more general toric varieties.
 
 ## Computing a Segre class:
 
@@ -35,6 +35,26 @@ If we prefer, we can specify our own Chow ring:
     
            2     2
     o10 = a b + a
+    
+## Algebraic Multiplicty 
+
+Below is an example where we compute the algebraic multiplicity of a variety inside an irreducible scheme
+
+    restart
+    needsPackage "SegreClasses"
+    kk=ZZ/32749
+    R = kk[x,y,z,w];
+    
+Consider the twisted cubic X in PP^3 and a subscheme Y of PP^3 containing the twisted cubic   
+    
+    X = ideal(-z^2+y*w,-y*z+x*w,-y^2+x*z)    
+    Y = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
+    
+We see that in fact Y is a `doubly' twisted cubic by computing that X has algebraic multiplcity 2 on Y, i.e. e_XY=2:   
+    
+    multiplicity(X,Y)
+    o7 = 2
+    
 ## Containment of the irreducible components of one scheme in another:
 
 Below is an example where we verify that one variety contains another in a product of projective spaces PP^2 x PP^2 x PP^2:
@@ -60,10 +80,14 @@ We now define two multi-graded ideals X, Y
 Now we check that the variety X is contained in the variety Y:
 
     time isComponentContained(X,Y)
+         -- used 2.31366 seconds
+    o12 = true
 
 To use classical methods we would have to saturate out the irrevant ideals and then test ideal containment as follows:   
 
     time isSubset(saturate(Y,B),saturate(X,B))
+         -- used 11.2451 seconds
+    o14 = true
 
 ## Containment in the Singular Locus of a Variety:
 
@@ -79,6 +103,7 @@ There is also a method to test containment of a vareity in the singular locus of
 We now confirm that V(P) is contained in the singular locus of V(C)    
     
     containedInSingularLocus(P,C)
+    o8 = true
 
 ## Intersection products
 
