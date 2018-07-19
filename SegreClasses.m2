@@ -1,6 +1,6 @@
 newPackage( "SegreClasses",
-    Version =>"1.01",
-    Date => "June 15, 2018",
+    Version =>"1.02",
+    Date => "July 13, 2018",
     Authors => {
         {Name => "Martin Helmer",
          Email => "m.helmer@math.ku.dk",
@@ -9,7 +9,7 @@ newPackage( "SegreClasses",
          Email => "Corey.Harris@mis.mpg.de",
          HomePage => "http://coreyharris.name"}
     },
-    Headline => "Computes s(X,Y) in  A*(P^n1x...xP^nm)",
+    Headline => "Computes s(X,Y) in  A*(P^n1x...xP^nm), algebraic multiplicity of a subvariety, and tests containment of varieties",
     PackageImports => {"CharacteristicClasses"},
     DebuggingMode => false,
     Reload => true
@@ -19,7 +19,6 @@ export {
    "chowClass",
    "intersectionProduct",
    "isMultiHom",
-   "makeMultiHom",
    "makeChowRing",
    "makeProductRing",
    "multiplicity",
@@ -210,7 +209,7 @@ projectiveDegrees (Scheme,Scheme) := opts -> (X,Y) -> (
     );
     return projectiveDegreesList;
 )
-segreDimX = method(TypicalValue => List,Options => {Verbose=>false});
+segreDimX = method(TypicalValue => RingElement,Options => {Verbose=>false});
 segreDimX (Ideal,Ideal,QuotientRing) := opts -> (X,Y,A) -> (
     if not isMultiHom(X) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     if not isMultiHom(Y) then (print "the second ideal is not multi-homogenous, please correct this"; return 0;);
@@ -269,7 +268,7 @@ multiplicity (Ideal,Ideal) := opts->(I1,I2) -> (
     return eXY;
 );
 
-chowClass=method(TypicalValue=>ZZ,Options => {Strategy=>"multidegree"});
+chowClass=method(TypicalValue=>RingElement,Options => {Strategy=>"multidegree"});
 chowClass Scheme := opts -> X -> (
     -- if not X.?chowClass then X.chowClass = chowClass(ideal X,ring(X.chowRing));
     if X.?chowClass then return X.chowClass;
@@ -302,7 +301,7 @@ chowClass Scheme := opts -> X -> (
     X.chowClass = classI;
     return X.chowClass;
 );
-chowClass (Ideal,Ring) := opts -> (I,A) -> (
+chowClass (Ideal,QuotientRing) := opts -> (I,A) -> (
     if not isMultiHom(I) then (print "the first ideal is not multi-homogenous, please correct this"; return 0;);
     R:=ring I;
     n:=numgens(R)-length unique degrees R;
@@ -555,6 +554,374 @@ OneAti=(dl,i)->(
 beginDocumentation()
 multidoc ///
 
+Node 
+     Key
+     	  SegreClasses
+     Headline
+     	  Computes Segre classes, algebraic multiplicity, intersection products and tests containment of the radical of an ideal inside a primary component of another ideal. Works for subschemes of products of projective spaces
+     Description
+     	  Text
+	      This package computes Segre classes, algebraic multiplicity, intersection products and tests containment of the radical of an ideal inside a primary component of another ideal. The package works for subschemes of products of projective spaces.
+	      The package implements methods described in [1]. More details and relevant definitions can be found in [1].
+	      
+	      References:\break
+	      [1] Corey Harris and Martin Helmer. "Segre class computation and practical applications." arXiv preprint arXiv:1806.07408 (2018). Link: https://arxiv.org/abs/1806.07408.
+Node 
+    Key
+    	segre
+	(segre, Ideal,Ideal)
+	(segre,Ideal, Ideal,QuotientRing)
+    Headline
+    	This method computes the Segre class of a scheme X inside a scheme Y, where X,Y are subschemes of some product of projective spaces
+    Usage
+    	segre(IX,IY)
+	segre(IX,IY,A)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	A:QuotientRing
+ 	    the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+    Outputs
+        s:RingElement
+	    the Segre class of the subscheme X defined by IX in the subscheme Y defined by IY as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    Description 
+    	Text
+	    For subschemes X,Y of \PP^{n_1}x...x\PP^{n_m} this command computes the Segre class s(X,Y) of X in Y as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    	Example
+	    R = makeProductRing({3,3})
+	    x = gens(R)
+	    D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
+	    X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
+	    segre(X,D)
+	    A = makeChowRing(R)
+	    s = segre(X,D,A)	        
+Node 
+    Key
+    	intersectionProduct
+	(intersectionProduct, Ideal,Ideal,Ideal)
+	(intersectionProduct,Ideal, Ideal,Ideal,QuotientRing)
+    Headline
+    	A class in the Chow ring of the ambient space representing the Fulton-MacPherson intersection product of two schemes inside a variety
+    Usage
+    	intersectionProduct(IX,IV,IY)
+	intersectionProduct(IX,IV,IY,A)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IV:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	A:QuotientRing
+ 	    the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+    Outputs
+        intProd:RingElement
+	    a class in the Chow ring A of \PP^{n_1}x...x\PP^{n_m} representing the Fulton-MacPherson intersection product of X with V in Y (where X is the scheme associated to IX, etc.).
+    Description 
+    	Text
+	    For subschemes X,V of a subvariety Y of \PP^{n_1}x...x\PP^{n_m} this command computes the Fulton-MacPherson intersection product of X with V in Y as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    	Example
+	    R = makeProductRing({3})
+	    (x,y,z,w) = toSequence gens R
+	    Q = ideal(x*y-z*w)
+	    L1 = ideal(x,w)
+	    L2 = ideal(y,w)
+	    intersectionProduct(L1,L2,Q,Verbose=>true)
+	    intersectionProduct(L1,L1,Q)
+Node 
+    Key
+    	projectiveDegrees
+	(projectiveDegrees, Ideal,Ideal)
+	(projectiveDegrees,Ideal, Ideal,QuotientRing)
+    Headline
+    	This method computes the projective degrees of a scheme X inside a scheme Y, where X,Y are subschemes of some product of projective spaces
+    Usage
+    	projectiveDegrees(IX,IY)
+	projectiveDegrees(IX,IY,A)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	A:QuotientRing
+ 	    the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+    Outputs
+        pd:List
+	    a list of the projective degrees of a subscheme X defined by IX in the subscheme Y defined by IY as classes in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    Description 
+    	Text
+	    For subschemes X,Y of \PP^{n_1}x...x\PP^{n_m} this command computes  a list of the projective degrees of a subscheme X in the subscheme Y as classes in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    	Example
+	    R = makeProductRing({3,3})
+	    x = gens(R)
+	    D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
+	    X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
+	    projectiveDegrees(X,D)
+	    A = makeChowRing(R)
+	    pd = projectiveDegrees(X,D,A)
+Node 
+    Key
+    	projectiveDegree
+	(projectiveDegree, Ideal,Ideal,RingElement)
+    Headline
+    	This method computes a single projective degree of a scheme X inside a scheme Y, where X,Y are subschemes of some product of projective spaces
+    Usage
+    	projectiveDegree(IX,IY,h)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	h:RingElement
+ 	    an element of the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+    Outputs
+        pd:RingElement
+	    a projective degree associated to h of a subscheme X defined by IX in the subscheme Y defined by IY as classes in the Chow ring A of \PP^{n_1}x...x\PP^{n_m}.
+    Description 
+    	Text
+	    For subschemes X, Y of \PP^{n_1}x...x\PP^{n_m} this command computes a projective degree associated to h of a subscheme X in the subscheme Y as classes in the Chow ring of \PP^{n_1}x...x\PP^{n_m}. The value returned is an integer. This method is faster if only one projective degree is needed. 
+    	Example
+	    R = makeProductRing({3,3})
+	    x = gens(R)
+	    D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
+	    X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
+	    A = makeChowRing(R)
+	    pd = projectiveDegrees(X,D,A)
+	    h=A_0^2*A_1^2
+	    pdh=projectiveDegree(X,D,h)
+	    (sum pd)_h==pdh
+	    	    
+Node 
+    Key
+    	segreDimX
+	(segreDimX,Ideal, Ideal,QuotientRing)
+    Headline
+    	This method computes the dimension X part of the Segre class of a scheme X inside a scheme Y, where X,Y are subschemes of some product of projective spaces
+    Usage
+	segreDimX(IX,IY,A)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	A:QuotientRing
+ 	    the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+    Outputs
+        s:RingElement
+	    the dimension X part of the Segre class of the subscheme X defined by IX in the subscheme Y defined by IY as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    Description 
+    	Text
+	    For subschemes X,Y of \PP^{n_1}x...x\PP^{n_m} this command computes the dimension X part of the Segre class s(X,Y) of X in Y as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This is faster than computing the entire Segre class.
+    	Example
+	    R = makeProductRing({2,2})
+	    x = gens(R)
+	    Y = ideal(random({2,2},R));
+	    X = Y+ideal(x_0*x_3+x_1*x_4);
+	    A = makeChowRing(R)
+	    time s = segreDimX(X,Y,A)
+	    time segre(X,Y,A)
+Node 
+    Key
+    	chowClass
+	(chowClass, Ideal)
+	(chowClass,Ideal, QuotientRing)
+    Headline
+    	Finds the (fundemental) class of a subscheme in the Chow ring of the ambient space
+    Usage
+    	chowClass(IX)
+	chowClass(IX,A)
+    Inputs
+    	Strategy =>"multidegree"
+	    using "prob" uses a probabilisitic method which is sometimes faster on large examples
+	IX:Ideal
+	    an ideal in the multi-graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	A:QuotientRing
+ 	    the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.    
+   Outputs
+        isMultHom:RingElement
+	    the class [X] in A where X is the subscheme associated to IX
+   Description
+       Text
+       	   Given a subscheme X of \PP^{n_1}x...x\PP^{n_m} this method computes [X] in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+       Example
+       	   R=makeProductRing({6})
+	   x=gens(R)
+	   J=ideal(x_0*x_2-x_4*x_5)
+	   clX=chowClass(J,Strategy=>"prob")
+	   clX2=chowClass(J,ring(clX))
+	   clX==clX2
+Node 
+    Key
+    	isMultiHom
+	(isMultiHom, Ideal)
+    Headline
+    	Tests if an ideal is multi-homogeneous with respect to the grading of its ring
+    Usage
+    	isMultiHom(X)
+    Inputs
+    	X:Ideal
+	    an ideal in the multi-graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+   Outputs
+        isMultHom:Boolean
+	    whether the input ideal is multi-homogeneous with respect to the grading of its ring
+   Description
+       Text
+       	   Given an ideal in the coordinate R ring of \PP^{n_1}x...x\PP^{n_m} this method tests if whether the input ideal is multi-homogeneous with respect to the grading on R.     
+       Example
+       	   R = makeProductRing({1,2})
+	   x=gens R
+	   degrees R
+	   isMultiHom ideal(x_0^2*x_2+x_1*x_2^2)
+	   isMultiHom ideal(x_0^2*x_2+x_1^2*x_3)
+Node 
+    Key
+    	multiplicity
+	(multiplicity, Ideal,Ideal)
+    Headline
+    	This method computes the algebraic (Hilbert-Samuel) multiplcity
+    Usage
+    	multiplicity(IX,IY)
+    Inputs
+        Verbose=>Boolean
+    	IX:Ideal
+	    a multi-homogeneous prime ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous primary ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.	    
+   Outputs
+        eXY:ZZ
+	    the algebraic (Hilbert-Samuel) multiplicity e_XY of the variety X associated to IX in the scheme Y associated to IY. 
+   Description
+       Text
+       	   For a subvariety X of an irreducible subscheme Y of \PP^{n_1}x...x\PP^{n_m}  this command computes the algebraic multiplicity e_XY of X in Y. Let R be the coordinate ring of \PP^{n_1}x...x\PP^{n_m}, let O_{X,Y}=(R/I_Y)_{I_X} be the local ring obtained by localizing (R/I_Y) at the prime ideal I_X, and let len denote the length of a local ring.
+	   Let M be the unique maximal ideal of O_{X,Y}. The Hilbert-Samuel polynomial is the polynomial P_{HS}(t)=len(O_{X,Y}/M^t) for t large.  
+	   In different words, this command computes the leading coefficient of the Hilbert-Samuel polynomial P_{HS}(t) associated to O_{X,Y}.
+	   Below we have an example of the multiplicity of the twisted cubic in a double twisted cubic.      
+       Example
+       	   R = ZZ/32749[x,y,z,w]
+	   X = ideal(-z^2+y*w,-y*z+x*w,-y^2+x*z)
+	   Y = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
+	   multiplicity(X,Y)
+Node 
+    Key
+    	isComponentContained
+	(isComponentContained, Ideal,Ideal)
+    Headline
+    	This method tests if a top-dimensional irreducible component of the scheme associated an ideal is contained in the scheme associated to another ideal
+    Usage
+    	isComponentContained(IX,IY)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+   Outputs
+        isCompCont:Boolean
+	    whether or not a top-dimensional irreducible (and reduced) component of the scheme X associated to IX is contained in the scheme Y associated to IY   
+   Description
+       Text
+       	   For a subschemes X of an irreducible subscheme Y of \PP^{n_1}x...x\PP^{n_m} this command tests whether or not a top-dimensional irreducible (and reduced) component of X is contained in Y 
+       Example
+       	   R = makeProductRing({2,2,2})
+	   x=(gens R)_{0..2}
+	   y=(gens R)_{3..5}
+	   z=(gens R)_{6..8}
+	   m1=matrix{{x_0,x_1,5*x_2},y_{0..2},{2*z_0,7*z_1,25*z_2}}
+	   m2=matrix{{9*z_0,4*z_1,3*z_2},y_{0..2},x_{0..2}}
+	   W=minors(3,m1)+minors(3,m2);
+	   f=random({1,1,1},R);
+	   Y=ideal (z_0*W_0-z_1*W_1)+ideal(f);
+	   X=((W)*ideal(y)+ideal(f));
+	   time isComponentContained(X,Y)
+	   print "we could confirm this with the computation:"
+	   B=ideal(x)*ideal(y)*ideal(z)
+	   time isSubset(saturate(Y,B),saturate(X,B))
+Node 
+    Key
+    	containedInSingularLocus
+	(containedInSingularLocus, Ideal,Ideal)
+    Headline
+    	This method tests is an irreducible variety is contained in the singular locus of the reduced scheme of an irreducible scheme
+    Usage
+    	containedInSingularLocus(IX,IY)
+    Inputs
+    	Verbose=>Boolean
+	IX:Ideal
+	    a multi-homogeneous prime ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	IY:Ideal
+	    a multi-homogeneous primary ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+   Outputs
+        contSingLoc:Boolean
+	    whether or not the variety X associated to IX is contained in the singular locus of the vareity asssociated to the radical of IY 
+   Description
+       Text
+           For a subvariety X of \PP^{n_1}x...x\PP^{n_m} and an irreducible subscheme Y of \PP^{n_1}x...x\PP^{n_m} this command whether X is contained in the singular locus of the reduced scheme of Y (i.e. the singular locus of the variety defined by the radical of the ideal defining Y).
+       Example
+	   n=6
+	   R = makeProductRing({n})
+	   x=gens(R)
+	   m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
+	   C=ideal mingens(minors(3,m));
+	   P=ideal(x_0,x_4,x_3,x_2,x_1)
+	   containedInSingularLocus(P,C)	      
+Node 
+    Key
+    	makeProductRing
+	(makeProductRing, List)
+	(makeProductRing,Ring ,List)
+    Headline
+    	Makes the coordinate ring of a product of projective spaces.
+    Usage
+    	makeProductRing(n)
+	makeProductRing(kk,n)
+    Inputs
+    	n:List
+	   a list {n_1,...,n_m} of the dimensions of the m projective spaces in the product \PP^{n_1}x...x\PP^{n_m}.
+        kk:Ring
+	   the coefficient ring to be used
+    Outputs
+     	  :Ring
+	   the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+    Description
+     	  Text
+	       Builds the multi-graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.    
+          Example
+	    R = makeProductRing(QQ,{3,4})
+	    R = makeProductRing({3,4})
+	    degrees R
+	    gens R
+Node 
+    Key
+    	makeChowRing
+	(makeChowRing, Ring)
+	(makeChowRing,Ring ,Symbol)
+    Headline
+    	Makes the Chow ring of a product of projective spaces.
+    Usage
+    	makeChowRing(R)
+	makeChowRing(R,h)
+    Inputs
+    	n:List
+	   a multi-graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+        h:Symbol
+	   the symbol to be used as the variable in the Chow ring
+    Outputs
+     	  :QuotientRing
+	   the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+    Description
+     	  Text
+	      Builds the Chow ring Z[H_1,...,H_m]/(H_1^{n_1+1},...,H_m^{n_m+1}) of \PP^{n_1}x...x\PP^{n_m}.  
+          Example
+	    R = makeProductRing({3,4})
+	    R = makeChowRing(R)
+	    describe R
 ///
 
 
@@ -562,8 +929,10 @@ TEST ///
 -- union of coordinate axes in PP3 (diagonal)
 {*
 restart
+installPackage "SegreClasses"
 needsPackage "SegreClasses"
 *}
+
 R = makeProductRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
@@ -584,14 +953,7 @@ degrees R
 I=ideal(random(2,R),x_0^4-x_1*x_3^3-x_4*x_5^3)
 J=ideal(x_0*x_2-x_4*x_5)
 chowClass(J,Strategy=>"prob")
--- having this here breaks the test (!?).  Separating for now...
--- A = ZZ[h]/(h^7)
--- assert(segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 assert(multiplicity(I,J,Verbose=>true)==1)
-se=segre(I,J)
-pd=projectiveDegrees(I,J)
-
-
 ///
 
 TEST ///
@@ -632,10 +994,12 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-kk=ZZ/32003
+kk=ZZ/32749
 R = kk[x,y,z,w];
 X = ideal(-z^2+y*w,-y*z+x*w,-y^2+x*z)
 Y = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
+multiplicity(X,Y)
+
 assert(multiplicity(X,Y)==2)
 time assert(isComponentContained(X,Y,Verbose=>true)==true)
 time assert (isComponentContained(Y,X)==true)
@@ -705,11 +1069,12 @@ restart
 needsPackage "SegreClasses"
 *}
 n=6
-kk=ZZ/32749
-R=kk[x_0..x_n]
+R = makeProductRing({n})
+x=gens(R)
 m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
 C=ideal mingens(minors(3,m))
 P=ideal(x_0,x_4,x_3,x_2,x_1)
+containedInSingularLocus(P,C)
 time assert(containedInSingularLocus(P,C,Verbose=>true)==true)
 ///
 
@@ -721,8 +1086,7 @@ TEST ///
 restart
 needsPackage "SegreClasses"
 *}
-kk=ZZ/32729
-R = makeProductRing(kk,{2,2,2})
+R = makeProductRing({2,2,2})
 x=(gens R)_{0..2}
 y=(gens R)_{3..5}
 z=(gens R)_{6..8}
@@ -735,650 +1099,6 @@ Y=ideal (z_0*W_0-z_1*W_1)+ideal(f)
 X=((W)*ideal(y)+ideal(f))
 isSubset(Y,X)
 time isSubset(saturate(Y,B),saturate(X,B))
+time isComponentContained(X,Y)
 time assert(isComponentContained(X,Y)==true)
 ///
-----------
---other examples in various order
--------
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = makeProductRing(kk,{2,3})
-x=(gens R)_{0..2}
-y=(gens R)_{3..6}
-I=ideal(x_0^2*x_1*y_1^2-x_0^3*y_0*y_3)
-J=ideal(x_1^2*x_0*y_3^2-x_0^3*y_2*y_0-x_0^3*y_0^2)
-time seg=segre(I,J)
-
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = kk[x,y,z,t]
-PP3xPP3 = makeProductRing(kk,{3,3})
-m1 = map(PP3xPP3,R,take(gens PP3xPP3,4))
-m2 = map(PP3xPP3,R,drop(gens PP3xPP3,4))
-f = ideal "x(x2-2xy+zt) + y(x2-3yt+z2+3t2-3tz+xy)"
-h = ideal "x(x2-7y2-zt) + y(3x2-5yt)"
-g = ideal "x(23xy-34z2-17yt+t2) + y(x2+y2+z2+xy+zt)"
-X = m1(f+g)
-Y = m2(h+g)
-D = minors(2,matrix{take(gens PP3xPP3,4),drop(gens PP3xPP3,4)})
--- this example takes 30secs or so... (07.01.18)
-time segre(D,X+Y)
-
-restart
-needsPackage "SegreClasses"
-R = makeProductRing({3})
-I1=ideal random(1,R)
-I2=ideal random(1,R)
-I3=ideal (R_0^2-34*R_1*R_2+3*R_3^2)
-intersectionProduct(I1,I2,I3)
-
-restart
-needsPackage "SegreClasses"
-R = makeProductRing(QQ,{3})
-(x,y,z,w) = toSequence gens R
-Q = ideal "xy-zw"
-L1 = ideal "x,w"
-L2 = ideal "y,w"
-intersectionProduct(L1,L2,Q,Verbose=>true)
-intersectionProduct(L1,L1,Q,Verbose=>true)
-
-restart
-needsPackage "SegreClasses"
-R=makeProductRing({2,1});
-x=(gens R)_{0..2}
-y=(gens R)_{3..4}
-I = ideal (x_0,x_1);  -- choosing a simple point to make things easier
-B=ideal(y_0*x_1-y_1*x_0); ---blow up of this point...
-E=B+ideal (x_0,x_1);
-intersectionProduct(E,E,B,Verbose=>true)
-
-restart
-needsPackage "SegreClasses"
-R = makeProductRing({3,3})
-C = makeChowRing(R)
-x = gens(R)
-D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
-X = ideal(x_0*x_1,x_1*x_2,x_0*x_2)
-pds = projectiveDegrees(X,D,Verbose=>true)
-l = gens C
-p = l#0^3 * l#1^3
-projectiveDegree(X,D,p)
-
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
-R=kk[x_0..x_n]
-m=matrix{for i from 0 to n-3 list x_i*x_(i+1),for i from 0 to n-3 list x_(i+3)*x_(i+1),for i from 0 to n-3 list x_5*x_(i+2),for i from 0 to n-3 list x_6*x_(i+3)}
-C=minors(2,m)
-numgens C
-decompose C
-P=ideal(x_0,x_1,x_3,x_5,x_6)
-time multiplicity(P,C)
-time containedInSingularLocus(P,C)
-time J=minors(4,jacobian(C));
-time isSubset(J,P)
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
-R=kk[x_0..x_n]
-C=ideal(x_0^2+x_1^2,x_3*x_2+x_1*x_3-21*x_4^2,x_3*x_5+x_2*x_3-21*x_5^2)
-P=decompose C
-isSubset(C,P_0)
-isSubset(C,P_1)
-time isVarietyContained(P_0,C)
-time isVarietyContained(P_1,C)
-time multiplicity(P_1,C)
-
-C=ideal(x_0^2+x_1^2,x_3*x_2+x_1*x_3-21*x_4^2,x_3*x_5+x_2*random(1,R)-21*x_5^2)
-C=ideal(x_0^2+x_1^2,x_3*x_2^2+55*x_0^2+77*x_0*x_4,x_3*x_5+x_2*random(1,R)-21*x_5^2)
-P=decompose C
-#P
-isSubset(C,P_0)
-isSubset(C,P_1)
-time isVarietyContained(P_0,C)
-time isVarietyContained(P_1,C)
-
-restart
-needsPackage "SegreClasses"
-R=makeProductRing({6})
-x=gens(R)
-degrees R
-I=ideal(x_0^2*x_1-random(1,R)*x_4^2,x_3*x_4*x_5-23*x_2^3-x_0^2*x_1)
-J=ideal(x_0^2*x_2-x_4*x_5^2+x_6^3)
-chowClass(J,Strategy=>"prob")
-
-assert(multiplicity(I,J,Verbose=>true)==1)
-A=makeChowRing(R)
-h=first gens A
-se=segre(I,J,A,Verbose=>true)
-pd=projectiveDegrees(I,J,A)
-alp=3*h
-clY=3*h
-dY=5
-dX=3
-le=for i from 0 to dX list clY*alp^(dY-i)//(1-3*h)^(i)
--(last le)+sum(le_{0..2})
-s2=sum(0..dX,i->(-1)^(i+1)*(clY*alp^(dY-i)-pd_(dX-i))//(1+3*h)^(i))
-se
-restart
-needsPackage "SegreClasses"
-n=5
-kk=ZZ/32749
-R=kk[x_0..x_n]
-Y=ideal(x_0,x_1)
-X=ideal(x_1,x_3)
-isSubset(X,Y)
-time isVarietyContained(Y,X)
-time isVarietyContained(X,Y)
-
-isSubset(C,P_0)
-isSubset(C,P_1)
-
-time multiplicity(Y,X)
-time isVarietyContained(P_1,C)
-
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
-R=kk[x_0..x_n]
-m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+x_(i+1)}
-C=ideal mingens(minors(3,m)+ideal(x_0*x_1*(x_5)+x_0^3))
-P=(decompose C)
-for p in P list codim p
-(radical C)==C
-C=radical C
-numgens C
-sub(C,{x_0=>0,x_4=>0,x_3=>0,x_2=>0,x_1=>0})
-P=ideal(x_0,x_4,x_3,x_2,x_1)
-time multiplicity(P,C)
-time containedInSingularLocus(P,C)
-time J=minors(4,jacobian(C));
-time isSubset(J,P)
-time isSubset(C,P)
-degree C
-time codim (J+C)
-A=makeChowRing R
-time projectiveDegree(P,C,A_0^5)
-restart
-
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
---kk=QQ
-R=kk[x_0..x_n]
-m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
-C=ideal mingens(minors(3,m))
-numgens C
-codim C
-C==radical(C)
-#(decompose C)
-P=ideal(x_0,x_4,x_3,x_2,x_1)
-time containedInSingularLocus(P,C)
-time J=minors(4,jacobian(C));
-time isSubset(J,P)
-time isSubset(C,P)
-time J1=radical J;
-A=makeChowRing R
-time isVarietyContained(P,C)
-time projectiveDegree(P,C,A_0^5)
-degree C
-restart
-
-restart
-needsPackage "SegreClasses"
-n=4
-kk=ZZ/32749
-R=kk[x_0..x_n]
-Y=ideal random(1,R)
-X=ideal(random(2,R),random(2,R))
-isVarietyContained(Y*X,Y)
-K=X*Y
-Z=ideal sum(numgens(K),i->random(kk)*K_i)
-segre(K,Z*Z)
-
-codim K
-codim Y
-codim(X*Y)
-m=matrix{for i from 0 to 2 list x_i,for i from 1 to 3 list x_i}
-C=ideal mingens(minors(2,m))
-I=ideal(x_0^3-x_2*x_3*x_1-5*x_1^2*x_0,12*x_0^2*x_3+13*x_1*x_2^2)
-J=ideal(x_1^2-x_2*x_3,12*x_3^2+33*x_0*x_2-x_1^2)
-Z=ideal (sum(numgens(I),i->random(kk)*I_i)*sum(numgens(C),i->random(kk)*C_i))
-Z=ideal (for i from 0 to 1 list sum(numgens(I),i->random(kk)*I_i))
-codim I
-degree saturate(Z,I)
-degree I
-degree Z
-degree(C+Z)
-codim (C+Z)
-projectiveDegrees(C+Z,Z)
-projectiveDegrees(C,ideal(sum(numgens(C),i->random(kk)*C_i)))
-P=decompose (J*I)
-projectiveDegrees(I,J*I)
-projectiveDegrees(I,J)
-projectiveDegrees(K+J*I,J)
-projectiveDegrees(K+J*I,I)
-projectiveDegrees(K+J,J)
-J==(J+ideal(random(kk)*J_0+random(kk)*J_1)*(ideal(random(kk)*K_0)))
-codim(J+ideal(random(kk)*J_0+random(kk)*J_1))
-codim(J+K)
-degree (K+I)
-K=ideal(12*x_0^2+13*x_1*x_2)
-codim(I*J+K+I)
-time isVarietyContained(K*K,K)
-K==radical(K*K)
-projectiveDegrees(I,I)
-
-segre(P_0,P_0)
-m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
-C=ideal mingens(minors(3,m))
-codim C
-P=ideal(x_0,x_4,x_3,x_2,x_1)
-time containedInSingularLocus(P,C)
-time J=minors(4,jacobian(C));
-time isSubset(J,P)
-time isSubset(C,P)
-time J1=radical J;
-A=makeChowRing R
-time isVarietyContained(P,C)
-time projectiveDegree(P,C,A_0^5)
-degree C
-restart
-
-restart
-check "SegreClasses"
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = makeProductRing(kk,{2,3})
-x=(gens R)_{0..2}
-y=(gens R)_{3..6}
-I=ideal(x_0^2*x_1*y_1^2-x_0^3*y_0*y_3)
-J=ideal(x_1^2*x_0*y_3^2-x_0^3*y_2*y_0-x_0^3*y_0^2)
-time seg=segre(I,J)
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = kk[x..z]
-Y=ideal(x*y)
-X=ideal(x^2,x*y,x*z,y*z)
-multiplicity(X,Y)
-projectiveDegrees(X,Y)
-decompose ideal(x_0,x_1,x_0+x_1)
-ideal(x_0*x_1,3*x_0)
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = kk[a..c]
-X=ideal "a3,ab,b3"
-Y=ideal "a3+(2a+3b+5c)ab-7b3"
-Y=ideal "23a3+(2a+344b+55c)ab-7b3"
-X=ideal(a^4,a*b^3,b^4)
-radical X
-G=for i from 0 to 3 list sum((numgens Y),j->random(kk)*Y_j)
-F=for i from 0 to 3 list sum((numgens X),j->random(kk)*X_j)
-Z=ideal(F_0*G_0)
-segre(X,Z,Strategy=>"Sat")
-segre(X,Y*ideal(random(2,R)))
-chowClass Z
-radical(Z+X)
-segre(X,ideal(F_0),Strategy=>"Sat")
-segre(X,ideal(G_0))
-chowClass radical X
-Z==radical(Z)
-ideal(F_0)==radical(ideal(F_0))
-codim X
-projectiveDegrees(X,Y)
-projectiveDegrees(radical X,Y)
-radical X
-time isVarietyContained(X,Y)
-isSubset((Y),radical(X))
-isSubset(Y,X)
-radical (ideal(jacobian(Y))+Y)
-multiplicity(X,Y)    
-degree X
-chowClass Y
-projectiveDegrees(X,Y)
-radical X
-
-NumericalAlgebraicGeometry
-X=ideal(a-b,a-2*b,a-2*c,a-c)
-Y=ideal random(1,R)
-X=ideal(random(2,R),random(2,R))
-isVarietyContained(X,Y)
-
-restart
-needsPackage "NumericalAlgebraicGeometry"
-R=CC[a..c]
-X=ideal(a-b,a-2*b,b-c,b-2*c)
-w = projectiveWitnessSet(X)
-decompose numericalIrreducibleDecomposition X
-
-restart
-needsPackage "SegreClasses"
-R=makeProductRing({2,3});
-x=(gens R)_{0..2}
-y=(gens R)_{3..6}
-ideal x
-I=ideal(x_0*x_1^2*y_1-x_2^3*y_3,x_2*y_2^2-x_1*y_0*y_1)
-degrees I
-codim I
-J=ideal(y)*ideal(I_0)+ideal(for e in x list e^2)*ideal(I_1)
-degrees J
-I==saturate(J,ideal(x)*ideal(y))
-isMultiHom I
-tex I
-
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = makeProductRing(kk,{3,4})
-gens R
-x=(gens R)_{0..3}
-y=(gens R)_{4..8}
-B=ideal(x)*ideal(y)
-y2=for c in y list c
-m=matrix{for c in x list c^2,y2_{0..3},y2_{1..4}}
-f=random({2,2},R)
-W=minors(3,m)
-decompose W
-Y=ideal(y_0*W_0-y_1*W_1)+ideal(x_2*W_2-x_3*W_3)
-X=(W)*ideal(x)
-degrees X
-degrees Y
-time isSubset(Y,X)
-time isSubset(saturate(Y,B),saturate(X,B))
-time isVarietyContained(X,Y)
-time isSubset(radical saturate(Y,B),radical saturate(X,B))
-
-decompose Y
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32729
-R = makeProductRing(kk,{2,2,2})
-gens R
-x=(gens R)_{0..2}
-y=(gens R)_{3..5}
-z=(gens R)_{6..8}
-B=ideal(x)*ideal(y)*ideal(z)
-m1=matrix{{x_0,x_1,5*x_2},y_{0..2},{2*z_0,7*z_1,25*z_2}}
-m2=matrix{{9*z_0,4*z_1,3*z_2},y_{0..2},x_{0..2}}
-W=minors(3,m1)+minors(3,m2)
-f=random({1,1,1},R)
-degrees W
-decompose W
-degrees W
-Y=ideal (z_0*W_0-z_1*W_1)+ideal(f)
-degrees Y
-X=((W)*ideal(y)+ideal(f))
-degrees X
-degrees Y
-isSubset(Y,X)
-time multidegree saturate(X+Y,B)
-time isSubset(saturate(Y,B),saturate(X,B))
-time isComponentContained(X,Y)
-
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32749
-R = makeProductRing(kk,{2,2,2,1})
-gens R
-x=(gens R)_{0..2}
-y=(gens R)_{3..5}
-z=(gens R)_{6..8}
-w=(gens R)_{9..10}
-B=ideal(x)*ideal(y)*ideal(z)*ideal(w)
-m1=matrix{{x_0,x_1,5*x_2},y_{0..2},z_{0..2}}
-m2=matrix{{2*x_1,7*x_2,5*x_0},y_{0..2},{3*z_1,7*z_2,15*z_0}}
-m3=matrix{{4*x_0^2,3*x_1^2,9*x_0^2},y_{0..2},z_{1..3}}
-W=minors(3,m1)+minors(3,m2)
-f=random({0,0,0,2},R)
-degrees W
-saturate(W,B)
-decompose W
-degrees W
-Y=ideal (W_0*w_0-W_1*w_1)*ideal(for c in y list c)*ideal(for c in w list c)+ideal(f)
-degrees Y
-X=(W)+ideal(f)
-degrees X
-degrees Y
-isSubset(Y,X)
-multidegree saturate(X+Y+ideal(f),B)
-time isSubset(saturate(Y,B),saturate(X,B))
-time isVarietyContained(X,Y)
-random({0,0,1},R)
-
-
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
---kk=QQ
-R=kk[x_0..x_n]
-m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
-m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list x_(i+1),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i+3)}--,for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
-C=ideal mingens(minors(3,m))
-P1=primaryDecomposition C
-P2=decompose C
-P1==P2
-X=ideal(C_0,C_4,C_9)
-codim X
-P=(primaryDecomposition X)
-codim P_0
-W=P_0
-numgens W
-V=ideal (flatten entries gens W)_{0..3}
-codim V
-numgens V
-sub(V,{x_5=>x_5^2})
-
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
-R=kk[x_0..x_n]
-X=ideal(x_2*x_3*x_5-5*x_6^2*x_0+3*x_2*x_0*x_1,random(3,R))
-Y=ideal mingens(X*X)
-time isComponentContained(X,Y)
-
-Theta=ideal(random(kk)*X_0+random(kk)*X_1)
-F=ideal(random(kk)*Y_0+random(kk)*Y_1+random(kk)*Y_2)
-time segre(X,Theta)
-time multiplicity(X,Theta*F)
-time segre(Y,F)
-time multiplicity(Y,Theta*F)
-time radical(X)==radical(Y)
-
-
-
-
-codim X
-Y=ideal(x_5*X_0-x_6*X_1,X_2,X_3)
-codim ideal(X_0,X_3,X_2)
-codim Y
-P=primaryDecomposition Y
-for p in (decompose Y) list codim p
-X==P_1
-X==radical(P_0)
-codim Y
-Y=ideal for i from 0 to 0 list x_(i%6)*X_(2*i)-x_((i+1)%6)*X_(2*i+1)
-X
-C=X*(ideal gens R)
-for i from 0 to 2 list {i%6,(i+1)%6}
-time radical(X)==radical(Y)
-codim Y
-decompose saturate Y
-decompose X
-numgens C
-time isVarietyContained(Y,X)
-time isVarietyContained(X,Y)
-
-X=ideal(x_0*x_3
-
-restart
-needsPackage "SegreClasses"
-kk=ZZ/32003
-R = kk[x,y,z,w];
-X = ideal(-z^2+y*w,-y*z+x*w,-y^2+x*z)
-Y = ideal(-z^3+2*y*z*w-x*w^2,-y^2+x*z)
-Y=ideal(z^2*X_0-w^2*X_1,X_2)
-radical(Y)
-X
-assert(multiplicity(X,Y)==2)
-radical(X)==radical(Y)
-time isSubset(X,Y)
-time isSubset(Y,X)
-
-
-
-restart
-needsPackage "SegreClasses"
-n=2
-kk=ZZ/32749
-R=kk[x_0..x_n]
-X=ideal(x_0,x_1)
-Y=ideal(x_1^2*x_2-x_0^2*(x_0+x_2))
-radical Y
-A=makeChowRing R
-A_0
-projectiveDegree(X,Y,A_0)
-ideal mingens (X+Y)
-segre(X,Y)
-
-
-restart
-needsPackage "SegreClasses"
-n=6
-kk=ZZ/32749
-R=kk[x_0..x_n]
-A=makeChowRing(R)
-X=ideal(x_2*x_3*x_5-5*x_6^2*x_0+3*x_2*x_0*x_1,random(3,R))
-Y=ideal mingens(X*X);
-time isComponentContained(X,Y)
-time isComponentContained(Y,X,Verbose=>true)
-
-
-Theta=ideal(random(kk)*X_0+random(kk)*X_1)
-F=ideal(random(kk)*Y_0+random(kk)*Y_1+random(kk)*Y_2)
-time segreDimX(X,Theta,A)
-time segreDimX(X,Theta*F,A)
-time segreDimX(Y,F,A)
-time segreDimX(Y,Theta*F,A)
-
-
-restart
-needsPackage "SegreClasses"
-R=kk=ZZ/32749
-R=kk[w..z]
-Y=ideal(0_R)
-X=ideal(x,y)*ideal(x^3,x*y,y^3,w)
-projectiveDegrees(X,Y)
-
-
-restart
-needsPackage "SegreClasses"
-kk = ZZ/32749
-R = makeProductRing(kk,{3})
-x = gens R
-X = intersect(ideal(x_0,x_1), ideal(x_0^3,x_0*x_1,x_1^3,x_2))
-Y = ideal (0*R_0)
-projectiveDegrees(X,Y)
-
--- make L very special
-L =  ideal (x_0+3*x_1+2*x_2)
-Y' = Y + L
-X' = X + L
-I = makeMultiHom(X',Y')
-f2 = sum(numgens I,j->random(kk)*I_j)
-f1 = sum(numgens I,j->random(kk)*I_j)
-J=saturate(ideal(f1,f2),X)
-K=J+minors(2,jacobian(J));
-codim saturate K
-decompose J
-saturate(L+ideal(f1,f2),X)
-degree oo
-
--- now make it general
-L = ideal random(1,R)
-Y' = Y + L
-X' = X + L
-I = makeMultiHom(X',Y')
-f2 = sum(numgens I,j->random(kk)*I_j)
-f1 = sum(numgens I,j->random(kk)*I_j)
-saturate(L+ideal(f1,f2),X)
-degree oo
-
-restart
-needsPackage "SegreClasses"
-R = makeProductRing({4})
-describe R
-x=gens R
-l=- 5*x_0 + x_1 - 9*x_2 - 13*x_3 + 12*x_4
-m=matrix{{l,x_1,x_2},{x_1,x_2,x_3},{x_2,x_1,x_4}}
-K= minors(2,m)
-X=ideal(K_1,K_0,K_2)
-V=ideal(K_3,K_4,K_5)
-codim(V)
-Y=ideal(x_3*x_2+23*x_0*x_4-x_1^2)
-codim V
-codim X
-time P=primaryDecomposition(V+Y+X)
-degree(V+X)
-time for p in P list codim p
-time intersectionProduct(X+Y,V+Y,Y,Verbose=>true)
-codim saturate (Y+ideal jacobian Y)
-
-X=ideal(l^2-l*x_4,x_4*x_2-l*x_4)
-V=ideal(x_4*x_0-l*x_4)
-Y=ideal(x_3^2-x_0*x_1+23*x_2*x_4)
-degree (X+Y+V)
-degree(V+Y)
-codim(X+Y)
-codim(V+Y)
-
-time for p in P list degree p
-
-time degree(saturate (P_0*P_2))
-Z=X+Y+V
-J=(Z+minors(codim(Z),jacobian(Z)))
-isSubset(J,radical(P_0))
-multiplicity (P_2,J,Verbose=>true)
-codim J
-codim P_1
-K=saturate(V+Y+X,P_1)
-codim K
-degree K
-time for p in P list codim p
-
-degree(X+Y)
-degree(V+Y)
-time degree(saturate (P_0*P_1*P_2*P_3*P_4*P_6*P_7*P_8*P_9))
-codim P_5
-degree (P_0*P_1*P_2*P_3*P_4*P_6*P_7*P_8*P_9)
-degree (X+Y+V)
-
-needsPackage "NumericalAlgebraicGeometry"
-S= CC[gens(R)]
-Z=sub(X+V+Y,S)
-time numericalIrreducibleDecomposition Z
-ideal mingens (X+Y)
-degree X
-codim(V+Y)
-print toString ideal mingens (V+Y)
-print toString ideal mingens (X+Y)
-print toString ideal mingens (Y)
-needsPackage "CharacteristicClasses"
-Chern Y
-codim saturate (Y+ideal jacobian Y)
