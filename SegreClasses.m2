@@ -10,7 +10,6 @@ newPackage( "SegreClasses",
          HomePage => "http://coreyharris.name"}
     },
     Headline => "Computes s(X,Y) in  A*(P^n1x...xP^nm), algebraic multiplicity of a subvariety, and tests containment of varieties",
-    PackageImports => {"CharacteristicClasses"},
     DebuggingMode => false,
     Reload => true
 );
@@ -519,7 +518,23 @@ intersectionProduct (Ideal,Ideal,Ideal,QuotientRing) :=opts->(Ix,Iv,Iy,A) -> (
     dimY := sum(factorDims) - codim(Iy);
     expectDim:= dimY - codim(Ix,Iy) - codim(Iv,Iy);
     if opts.Verbose then <<"Segre pullback to diagonal = "<<segrePullback<<endl;
-    cY:=CSM(A,Iy)//chowClass(Iy,A);
+    --cY:=CSM(A,Iy)//chowClass(Iy,A);
+    --Find the Chern Class of Y
+    B:=flatten entries sort basis A;
+    ns:=degree last B;
+    n:=sum(ns);
+    m:=length ns;
+    ChernTR:=product(m,i->(1+(basis(OneAti(m,i),A))_0_0)^(ns_i+1));
+    Vlist:={};
+    dv:=0;
+    gensIy:=flatten entries gens(Iy);
+    for f in gensIy do(
+    	dv=degree f;
+    	Vlist=append(Vlist,sum(length dv, i-> dv_i*(basis(OneAti(m,i),A))_0_0));
+    	);
+    CE:=product(numgens(Iy),j->(1+Vlist_j));
+    cY:=(ChernTR//CE);
+    --done with Chern class
     if opts.Verbose then <<"Chern class = "<< cY <<endl;
     intProduct:=cY*segrePullback;
     return sum select(terms intProduct,j->sum(degree(j))==sum(factorDims)-expectDim);
@@ -615,7 +630,7 @@ Node
 	IV:Ideal
 	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
 	IY:Ideal
-	    a multi-homogeneous ideal defining a closed subscheme of \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
+	    a multi-homogeneous ideal defining a smooth complete intersection in \PP^{n_1}x...x\PP^{n_m}; @TO makeProductRing@ builds the graded coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
 	A:QuotientRing
  	    the Chow ring of \PP^{n_1}x...x\PP^{n_m}. This ring can be built by applying @TO makeChowRing@ to the coordinate ring of \PP^{n_1}x...x\PP^{n_m}.
     Outputs
@@ -623,7 +638,7 @@ Node
 	    a class in the Chow ring A of \PP^{n_1}x...x\PP^{n_m} representing the Fulton-MacPherson intersection product of X with V in Y (where X is the scheme associated to IX, etc.).
     Description 
     	Text
-	    For subschemes X,V of a subvariety Y of \PP^{n_1}x...x\PP^{n_m} this command computes the Fulton-MacPherson intersection product of X with V in Y as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}.
+	    For subschemes X,V of a smooth complete intersection subvariety Y of \PP^{n_1}x...x\PP^{n_m} this command computes the Fulton-MacPherson intersection product of X with V in Y as a class in the Chow ring of \PP^{n_1}x...x\PP^{n_m}. Note that this command requires that Y is a smooth complete intersection subvariety, however this is not checked internally.  
     	Example
 	    R = makeProductRing({3})
 	    (x,y,z,w) = toSequence gens R
@@ -927,11 +942,11 @@ Node
 
 TEST ///
 -- union of coordinate axes in PP3 (diagonal)
-{*
+-*
 restart
 installPackage "SegreClasses"
 needsPackage "SegreClasses"
-*}
+*-
 
 R = makeProductRing({3,3})
 x = gens(R)
@@ -943,10 +958,10 @@ assert(s == 3*(a^3*b^2+a^2*b^3)-10*(a^3*b^3))
 ///
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 R=makeProductRing({6})
 x=gens(R)
 degrees R
@@ -958,10 +973,10 @@ assert(multiplicity(I,J,Verbose=>true)==1)
 
 TEST ///
 -- union of coordinate axes in PP3 (diagonal)
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 R = makeProductRing({3,3})
 x = gens(R)
 D = minors(2,matrix{{x_0..x_3},{x_4..x_7}})
@@ -975,10 +990,10 @@ assert(sort(pds)==sort(l))
 ///
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 R=makeProductRing({6})
 x=gens(R)
 degrees R
@@ -990,10 +1005,10 @@ assert(segre(I,J,A,Verbose=>true)==16*h^3-96*h^4+448*h^5-1920*h^6)
 ///
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 kk=ZZ/32749
 R = kk[x,y,z,w];
 X = ideal(-z^2+y*w,-y*z+x*w,-y^2+x*z)
@@ -1008,10 +1023,10 @@ time assert (isComponentContained(Y,X)==true)
 ///
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 -- Cx is a hyperplane section on a smooth quadric surface
 -- embedded in the diagonal of P3xP3
 R=makeProductRing({3,3})
@@ -1028,10 +1043,10 @@ assert(s == 2*(a^3*b^2+a^2*b^3-a^3*b^3))
 ///
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 R=makeProductRing({2,1});
 x=(gens R)_{0..2};
 y=(gens R)_{3..4};
@@ -1044,10 +1059,10 @@ assert(s == a^2 + a^2*b)
 ///
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 n=6
 kk=ZZ/32749
 R=kk[x_0..x_n]
@@ -1064,28 +1079,41 @@ time segreDimX(X,Theta*F,A)
 
 
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
 n=6
 R = makeProductRing({n})
 x=gens(R)
 m=matrix{for i from 0 to n-3 list x_i,for i from 0 to n-3 list (i+3)*x_(i+3),for i from 0 to n-3 list x_(i+2),for i from 0 to n-3 list x_(i)+(5+i)*x_(i+1)}
 C=ideal mingens(minors(3,m))
 P=ideal(x_0,x_4,x_3,x_2,x_1)
-containedInSingularLocus(P,C)
+time containedInSingularLocus(P,C)
 time assert(containedInSingularLocus(P,C,Verbose=>true)==true)
 ///
 
-end
-
-
 TEST ///
-{*
+-*
 restart
 needsPackage "SegreClasses"
-*}
+*-
+R = makeProductRing({3})
+A=makeChowRing(R)
+h=A_0
+(x,y,z,w) = toSequence gens R
+Q = ideal(x*y-z*w)
+L1 = ideal(x,w)
+L2 = ideal(y,w)
+assert(intersectionProduct(L1,L2,Q,A)==h^3)
+assert(intersectionProduct(L1,L1,Q,A)==0_A)
+///
+
+TEST ///
+-*
+restart
+needsPackage "SegreClasses"
+*-
 R = makeProductRing({2,2,2})
 x=(gens R)_{0..2}
 y=(gens R)_{3..5}
@@ -1097,8 +1125,10 @@ W=minors(3,m1)+minors(3,m2)
 f=random({1,1,1},R)
 Y=ideal (z_0*W_0-z_1*W_1)+ideal(f)
 X=((W)*ideal(y)+ideal(f))
-isSubset(Y,X)
-time isSubset(saturate(Y,B),saturate(X,B))
-time isComponentContained(X,Y)
-time assert(isComponentContained(X,Y)==true)
+assert(isComponentContained(X,Y)==true)
 ///
+
+end
+	    
+
+
