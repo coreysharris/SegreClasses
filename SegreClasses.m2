@@ -9,7 +9,7 @@ newPackage( "SegreClasses",
          Email => "Corey.Harris@mis.mpg.de",
          HomePage => "http://coreyharris.name"}
     },
-    Headline => "Computes s(X,Y) in  A*(P^n1x...xP^nm), algebraic multiplicity of a subvariety, and tests containment of varieties",
+    Headline => "Tests containment of varieties, computes the algebraic (Samuel) multiplicity of a subvariety, finds Segre classes and the Fulton-MacPherson intersection product",
     DebuggingMode => false,
     Reload => true
 );
