@@ -9,7 +9,7 @@ newPackage( "SegreClasses",
          Email => "Corey.Harris@mis.mpg.de",
          HomePage => "http://coreyharris.name"}
     },
-    Headline => "Tests containment of varieties, computes the algebraic (Samuel) multiplicity of a subvariety, finds Segre classes and the Fulton-MacPherson intersection product",
+    Headline => "Tests containment of varieties and computes algebraic multiplicity of subvarieties and Fulton-MacPherson intersection products - via a very general Segre class computation",
     DebuggingMode => false,
     Reload => true
 );
@@ -573,10 +573,10 @@ Node
      Key
      	  SegreClasses
      Headline
-     	  Computes Segre classes, algebraic multiplicity, intersection products and tests containment of the radical of an ideal inside a primary component of another ideal. Works for subschemes of products of projective spaces
+     	  Tests containment of varieties and computes algebraic multiplicity of subvarieties and Fulton-MacPherson intersection products - via a very general Segre class computation. The package works for subschemes of products of projective spaces.
      Description
      	  Text
-	      This package computes Segre classes, algebraic multiplicity, intersection products and tests containment of the radical of an ideal inside a primary component of another ideal. The package works for subschemes of products of projective spaces.
+	      This package computes Segre classes, algebraic multiplicity, Fulton-MacPherson intersection products and tests if a top-dimensional irreducible component of the scheme associated an ideal is contained in the scheme associated to another ideal. Specialized methods to test the containment of a variety in the singular locus of another are provided, these methods work without computing the ideal of the singular locus and can provide significant speed-ups relative to the standard methods when the singular locus has a complicated structure. The package works for subschemes of products of projective spaces.
 	      The package implements methods described in [1]. More details and relevant definitions can be found in [1].
 	      
 	      References:\break
@@ -863,7 +863,7 @@ Node
     	containedInSingularLocus
 	(containedInSingularLocus, Ideal,Ideal)
     Headline
-    	This method tests is an irreducible variety is contained in the singular locus of the reduced scheme of an irreducible scheme
+    	This method tests is an irreducible variety is contained in the singular locus of the reduced scheme of an irreducible scheme 
     Usage
     	containedInSingularLocus(IX,IY)
     Inputs
@@ -877,7 +877,7 @@ Node
 	    whether or not the variety X associated to IX is contained in the singular locus of the vareity asssociated to the radical of IY 
    Description
        Text
-           For a subvariety X of \PP^{n_1}x...x\PP^{n_m} and an irreducible subscheme Y of \PP^{n_1}x...x\PP^{n_m} this command whether X is contained in the singular locus of the reduced scheme of Y (i.e. the singular locus of the variety defined by the radical of the ideal defining Y).
+           For a subvariety X of \PP^{n_1}x...x\PP^{n_m} and an irreducible subscheme Y of \PP^{n_1}x...x\PP^{n_m} this command tests whether X is contained in the singular locus of the reduced scheme of Y (i.e. the singular locus of the variety defined by the radical of the ideal defining Y).
        Example
 	   n=6
 	   R = makeProductRing({n})
